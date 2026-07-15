@@ -2,8 +2,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import requests
 import json
+import os
 
 router = APIRouter()
+
+CLAUDE_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+print(f"✓ Claude API key loaded: {'Yes' if CLAUDE_API_KEY else 'No - check .env file'}")
 
 # ── INPUT SCHEMA ─────────────────────────────────────────────
 class AdvisoryInput(BaseModel):
@@ -60,11 +64,18 @@ Generate a health advisory with exactly this JSON structure:
 Return ONLY the JSON object, no extra text."""
 
     try:
+        if not CLAUDE_API_KEY:
+            return _fallback_advisory(data)
+
         response = requests.post(
             "https://api.anthropic.com/v1/messages",
-            headers={"Content-Type": "application/json"},
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": CLAUDE_API_KEY,
+                "anthropic-version": "2023-06-01"
+            },
             json={
-                "model": "claude-sonnet-4-6",
+                "model": "claude-sonnet-5",
                 "max_tokens": 1000,
                 "messages": [{"role": "user", "content": prompt}]
             },
@@ -76,6 +87,9 @@ Return ONLY the JSON object, no extra text."""
             return _fallback_advisory(data)
 
         result = response.json()
+        if response.status_code != 200:
+            print(f"❌ Claude API full error: {result}")
+            return _fallback_advisory(data)
         text = result["content"][0]["text"]
         advisory = json.loads(text)
 
@@ -90,6 +104,7 @@ Return ONLY the JSON object, no extra text."""
         }
 
     except Exception as e:
+        print(f"❌ Claude API error: {e}")
         return _fallback_advisory(data)
 
 # ── FALLBACK (when no API key yet) ───────────────────────────
