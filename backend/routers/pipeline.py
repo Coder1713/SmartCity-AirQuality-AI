@@ -4,6 +4,7 @@ import time
 import pickle
 import pandas as pd
 from datetime import datetime
+from backend.routers.advisory import ADVISORY_TRANSLATIONS
 
 router = APIRouter()
 
@@ -48,43 +49,27 @@ def get_aqi_category(aqi: float) -> str:
     elif aqi <= 400: return "Very Poor"
     else:            return "Severe"
 
-def get_advisory(aqi: float, population_type: str) -> dict:
-    if aqi <= 100:
-        return {
-            "alert_level": "green",
-            "headline": "Air quality is acceptable today",
-            "health_advice": "Conditions are safe for most activities.",
-            "recommended_actions": ["Enjoy outdoor activities", "Open windows"],
-            "avoid": ["Nothing specific"],
-            "best_time_outdoors": "Any time"
-        }
+def get_advisory(aqi: float, population_type: str, language: str = "english") -> dict:
+    if aqi <= 50:
+        level = "green"
+    elif aqi <= 100:
+        level = "yellow"
     elif aqi <= 200:
-        return {
-            "alert_level": "yellow",
-            "headline": "Moderate pollution — sensitive groups take care",
-            "health_advice": "Sensitive individuals may experience discomfort outdoors.",
-            "recommended_actions": ["Limit outdoor exertion", "Keep windows closed at peak hours"],
-            "avoid": ["Heavy outdoor exercise in afternoon"],
-            "best_time_outdoors": "Early morning 6-8 AM"
-        }
-    elif aqi <= 300:
-        return {
-            "alert_level": "orange",
-            "headline": "Poor air quality — wear mask outdoors",
-            "health_advice": "Everyone may experience discomfort. Sensitive groups avoid outdoor exposure.",
-            "recommended_actions": ["Wear N95 mask", "Keep windows closed", "Use air purifier"],
-            "avoid": ["Outdoor exercise", "Opening windows"],
-            "best_time_outdoors": "Avoid if possible, before 7 AM only"
-        }
+        level = "orange"
     else:
-        return {
-            "alert_level": "red",
-            "headline": "Severe air quality — stay indoors",
-            "health_advice": "Avoid all outdoor activities. Seek medical help if breathing difficulty.",
-            "recommended_actions": ["Stay indoors", "Wear N95 if going out", "Seek medical help if needed"],
-            "avoid": ["All outdoor activities", "Physical exertion"],
-            "best_time_outdoors": "Do not go outdoors"
-        }
+        level = "red"
+
+    lang = language if language in ["english", "hindi", "kannada", "tamil"] else "english"
+    content = ADVISORY_TRANSLATIONS[level][lang]
+
+    return {
+        "alert_level": level,
+        "headline": content["headline"],
+        "health_advice": content["health_advice"],
+        "recommended_actions": content["actions"],
+        "avoid": ["Outdoor exposure" if level != "green" else "Nothing specific today"],
+        "best_time_outdoors": content["best_time"]
+    }
 
 def get_attribution(data: PipelineInput) -> dict:
     sources = []
@@ -202,7 +187,7 @@ def run_full_pipeline(data: PipelineInput):
 
     # ── STEP 4: ADVISORY ─────────────────────────────────────
     t0 = time.time()
-    advisory = get_advisory(predicted_aqi, data.population_type)
+    advisory = get_advisory(predicted_aqi, data.population_type, data.language)
     advisory_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "4. Citizen Advisory Agent", "time_ms": advisory_time})
 
