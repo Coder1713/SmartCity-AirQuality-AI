@@ -49,6 +49,27 @@ def get_aqi_category(aqi: float) -> str:
     elif aqi <= 400: return "Very Poor"
     else:            return "Severe"
 
+POPULATION_ADDENDUM = {
+    "elderly": {
+        "english": "Elderly individuals should take extra precaution and avoid outdoor exposure even at moderate AQI levels.",
+        "hindi": "बुजुर्गों को अतिरिक्त सावधानी बरतनी चाहिए और मध्यम AQI स्तर पर भी बाहरी संपर्क से बचना चाहिए।",
+        "kannada": "ವೃದ್ಧರು ಹೆಚ್ಚುವರಿ ಎಚ್ಚರಿಕೆ ವಹಿಸಬೇಕು ಮತ್ತು ಮಧ್ಯಮ AQI ಮಟ್ಟದಲ್ಲಿಯೂ ಹೊರಾಂಗಣ ಸಂಪರ್ಕ ತಪ್ಪಿಸಬೇಕು.",
+        "tamil": "முதியவர்கள் கூடுதல் எச்சரிக்கை உடன் இருக்க வேண்டும் மற்றும் மிதமான AQI அளவிலும் வெளிப்புற வெளிப்பாட்டைத் தவிர்க்க வேண்டும்."
+    },
+    "children": {
+        "english": "Children's developing lungs are highly sensitive — limit outdoor playtime and monitor for coughing or breathing difficulty.",
+        "hindi": "बच्चों के विकासशील फेफड़े अत्यधिक संवेदनशील होते हैं — बाहरी खेल का समय सीमित करें और खांसी या सांस लेने में कठिनाई पर नज़र रखें।",
+        "kannada": "ಮಕ್ಕಳ ಬೆಳವಣಿಗೆಯ ಶ್ವಾಸಕೋಶಗಳು ಹೆಚ್ಚು ಸೂಕ್ಷ್ಮ — ಹೊರಾಂಗಣ ಆಟದ ಸಮಯ ಮಿತಿಗೊಳಿಸಿ ಮತ್ತು ಕೆಮ್ಮು ಅಥವಾ ಉಸಿರಾಟದ ತೊಂದರೆಯನ್ನು ಗಮನಿಸಿ.",
+        "tamil": "குழந்தைகளின் வளரும் நுரையீரல்கள் மிகவும் உணர்திறன் கொண்டவை — வெளிப்புற விளையாட்டு நேரத்தை கட்டுப்படுத்தி இருமல் அல்லது சுவாசிக்க சிரமத்தை கண்காணிக்கவும்."
+    },
+    "outdoor_workers": {
+        "english": "Outdoor workers should take frequent breaks indoors, use N95 masks during work hours, and stay hydrated throughout shifts.",
+        "hindi": "बाहरी श्रमिकों को घर के अंदर बार-बार ब्रेक लेना चाहिए, काम के घंटों के दौरान N95 मास्क का उपयोग करना चाहिए, और पूरी शिफ्ट में हाइड्रेटेड रहना चाहिए।",
+        "kannada": "ಹೊರಾಂಗಣ ಕಾರ್ಮಿಕರು ಆಗಾಗ್ಗೆ ಒಳಾಂಗಣದಲ್ಲಿ ವಿರಾಮ ತೆಗೆದುಕೊಳ್ಳಬೇಕು, ಕೆಲಸದ ಸಮಯದಲ್ಲಿ N95 ಮಾಸ್ಕ್ ಬಳಸಬೇಕು, ಮತ್ತು ಪೂರ್ತಿ ಶಿಫ್ಟ್‌ನಲ್ಲಿ ಹೈಡ್ರೇಟೆಡ್ ಆಗಿರಬೇಕು.",
+        "tamil": "வெளிப்புற தொழிலாளர்கள் அடிக்கடி உள்ளே ஓய்வு எடுக்க வேண்டும், வேலை நேரங்களில் N95 மாஸ்க் பயன்படுத்த வேண்டும், மற்றும் முழு ஷிப்ட் முழுவதும் நீரேற்றமாக இருக்க வேண்டும்."
+    }
+}
+
 def get_advisory(aqi: float, population_type: str, language: str = "english") -> dict:
     if aqi <= 50:
         level = "green"
@@ -62,13 +83,18 @@ def get_advisory(aqi: float, population_type: str, language: str = "english") ->
     lang = language if language in ["english", "hindi", "kannada", "tamil"] else "english"
     content = ADVISORY_TRANSLATIONS[level][lang]
 
+    health_advice = content["health_advice"]
+    if population_type in POPULATION_ADDENDUM:
+        health_advice = health_advice + " " + POPULATION_ADDENDUM[population_type][lang]
+
     return {
         "alert_level": level,
         "headline": content["headline"],
-        "health_advice": content["health_advice"],
+        "health_advice": health_advice,
         "recommended_actions": content["actions"],
         "avoid": ["Outdoor exposure" if level != "green" else "Nothing specific today"],
-        "best_time_outdoors": content["best_time"]
+        "best_time_outdoors": content["best_time"],
+        "population_type": population_type
     }
 
 def get_attribution(data: PipelineInput) -> dict:
