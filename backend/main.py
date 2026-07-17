@@ -3,7 +3,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import forecast, advisory, attribution, enforcement, multicity, pipeline
+from backend.routers import forecast, advisory, attribution, enforcement, multicity, pipeline, trend
 
 app = FastAPI(
     title="SmartCity AQI Intelligence API",
@@ -26,6 +26,7 @@ app.include_router(enforcement.router,  prefix="/enforcement",  tags=["3. Enforc
 app.include_router(advisory.router,     prefix="/advisory",     tags=["4. Citizen Advisory Agent"])
 app.include_router(multicity.router,    prefix="/multicity",    tags=["5. Multi-City Dashboard"])
 app.include_router(pipeline.router,     prefix="/pipeline",     tags=["6. Full Intelligence Pipeline"])
+app.include_router(trend.router,        prefix="/trend",        tags=["7. Forecast Trend Agent"])
 @app.get("/")
 def root():
     return {
