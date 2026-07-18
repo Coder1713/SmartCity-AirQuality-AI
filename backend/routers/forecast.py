@@ -18,6 +18,8 @@ except Exception as e:
     print(f"❌ Error loading model: {e}")
     model = None
     FEATURES = []
+def is_model_loaded():
+    return model is not None and FEATURES is not None and len(FEATURES) > 0
 
 # ── INPUT SCHEMA ─────────────────────────────────────────────
 class ForecastInput(BaseModel):

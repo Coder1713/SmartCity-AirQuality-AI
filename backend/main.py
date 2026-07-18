@@ -43,6 +43,8 @@ def root():
         "docs": "/docs"
     }
 
+from backend.routers.forecast import is_model_loaded
+
 @app.get("/health")
 def health():
-    return {"status": "healthy"}
+    return {"status": "ok", "model_loaded": is_model_loaded()}
