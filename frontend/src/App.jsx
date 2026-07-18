@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { api, getSampleReading, DELHI_STATIONS } from './api';
 import StationMap from './StationMap';
 import './App.css';
@@ -40,8 +40,8 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">
-        <h1>🌆 SmartCity AQI Intelligence</h1>
-        <p>AI-Powered Urban Air Quality Intelligence for Delhi — PS5 ET AI Hackathon 2026</p>
+        <h1>SmartCity AQI Intelligence</h1>
+        <p>AI Powered Urban Air Quality Intelligence for Delhi: PS5 ET AI Hackathon 2026</p>
       </div>
 
       <div className="controls">
@@ -64,7 +64,7 @@ export default function App() {
         </select>
 
         <button className="primary" onClick={runPipeline} disabled={loading}>
-          {loading ? 'Analyzing...' : '▶ Run Full Intelligence Pipeline'}
+          {loading ? 'Analyzing...' : 'Run Full Intelligence Pipeline'}
         </button>
       </div>
 
@@ -75,7 +75,7 @@ export default function App() {
           <div className="pipeline-time">
             <div style={{color: '#9ca3af', fontSize: 13}}>SIGNAL TO INTERVENTION RESPONSE TIME</div>
             <div className="big-number">{result.pipeline_summary.total_response_time_ms}ms</div>
-            <div style={{color: '#9ca3af', fontSize: 13}}>4 AI agents chained · {result.pipeline_summary.steps_completed} steps completed</div>
+            <div style={{color: '#9ca3af', fontSize: 13}}>4 AI agents chained, {result.pipeline_summary.steps_completed} steps completed</div>
           </div>
 
           <div className="grid">
@@ -88,7 +88,7 @@ export default function App() {
                 {result.forecast.category}
               </span>
               <div style={{marginTop: 12, fontSize: 12, color: '#9ca3af'}}>
-                Model R² = {result.forecast.model_r2} · RMSE = {result.forecast.model_rmse}
+                Model R2 = {result.forecast.model_r2}, RMSE = {result.forecast.model_rmse}
               </div>
             </div>
 
@@ -100,7 +100,7 @@ export default function App() {
               </div>
               <ul className="action-list">
                 {result.attribution.all_sources.slice(0,3).map((s,i) => (
-                  <li key={i}>{s.source} — {s.confidence}%</li>
+                  <li key={i}>{s.source}: {s.confidence}%</li>
                 ))}
               </ul>
             </div>
@@ -129,7 +129,7 @@ export default function App() {
           </div>
 
           <div className="card" style={{marginBottom: 24}}>
-            <h3>⏱ Agent Response Timings</h3>
+            <h3>Agent Response Timings</h3>
             {result.step_timings.map((s,i) => (
               <div className="timing-row" key={i}>
                 <span>{s.step}</span>
@@ -141,16 +141,16 @@ export default function App() {
       )}
 
       <div className="card" style={{marginBottom: 24}}>
-        <h3>📍 5. Geospatial Station Map — Delhi</h3>
+        <h3>5. Geospatial Station Map: Delhi</h3>
         <StationMap stationsData={stationsAqi} onSelectStation={setSelectedStation} />
       </div>
 
       <div className="card">
-        <h3>🏙 6. Multi-City Comparative Dashboard</h3>
+        <h3>6. Multi-City Comparative Dashboard</h3>
         {cities.map((c, i) => (
           <div className="city-row" key={i}>
             <span>{c.city}</span>
-            <span style={{color: CATEGORY_COLORS[c.category]}}>{c.avg_aqi_2024} AQI · {c.category}</span>
+            <span style={{color: CATEGORY_COLORS[c.category]}}>{c.avg_aqi_2024} AQI, {c.category}</span>
             <span style={{fontSize: 12, color: '#9ca3af'}}>{c.days_poor_or_worse} poor days/yr</span>
           </div>
         ))}
@@ -158,3 +158,5 @@ export default function App() {
     </div>
   );
 }
+
+

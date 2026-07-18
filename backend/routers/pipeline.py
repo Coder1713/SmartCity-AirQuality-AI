@@ -8,7 +8,6 @@ from backend.routers.advisory import ADVISORY_TRANSLATIONS
 
 router = APIRouter()
 
-# Load model once
 try:
     with open("ml/aqi_forecast_model.pkl", "rb") as f:
         model = pickle.load(f)
@@ -18,7 +17,6 @@ except:
     model = None
     FEATURES = []
 
-# ── INPUT SCHEMA ─────────────────────────────────────────────
 class PipelineInput(BaseModel):
     station_id: str = "DL001"
     pm25: float = 89.0
@@ -40,7 +38,6 @@ class PipelineInput(BaseModel):
     population_type: str = "general"
     available_inspectors: int = 3
 
-# ── HELPERS ───────────────────────────────────────────────────
 def get_aqi_category(aqi: float) -> str:
     if aqi <= 50:    return "Good"
     elif aqi <= 100: return "Satisfactory"
@@ -57,10 +54,10 @@ POPULATION_ADDENDUM = {
         "tamil": "முதியவர்கள் கூடுதல் எச்சரிக்கை உடன் இருக்க வேண்டும் மற்றும் மிதமான AQI அளவிலும் வெளிப்புற வெளிப்பாட்டைத் தவிர்க்க வேண்டும்."
     },
     "children": {
-        "english": "Children's developing lungs are highly sensitive — limit outdoor playtime and monitor for coughing or breathing difficulty.",
-        "hindi": "बच्चों के विकासशील फेफड़े अत्यधिक संवेदनशील होते हैं — बाहरी खेल का समय सीमित करें और खांसी या सांस लेने में कठिनाई पर नज़र रखें।",
-        "kannada": "ಮಕ್ಕಳ ಬೆಳವಣಿಗೆಯ ಶ್ವಾಸಕೋಶಗಳು ಹೆಚ್ಚು ಸೂಕ್ಷ್ಮ — ಹೊರಾಂಗಣ ಆಟದ ಸಮಯ ಮಿತಿಗೊಳಿಸಿ ಮತ್ತು ಕೆಮ್ಮು ಅಥವಾ ಉಸಿರಾಟದ ತೊಂದರೆಯನ್ನು ಗಮನಿಸಿ.",
-        "tamil": "குழந்தைகளின் வளரும் நுரையீரல்கள் மிகவும் உணர்திறன் கொண்டவை — வெளிப்புற விளையாட்டு நேரத்தை கட்டுப்படுத்தி இருமல் அல்லது சுவாசிக்க சிரமத்தை கண்காணிக்கவும்."
+        "english": "Children's developing lungs are highly sensitive, limit outdoor playtime and monitor for coughing or breathing difficulty.",
+        "hindi": "बच्चों के विकासशील फेफड़े अत्यधिक संवेदनशील होते हैं, बाहरी खेल का समय सीमित करें और खांसी या सांस लेने में कठिनाई पर नज़र रखें।",
+        "kannada": "ಮಕ್ಕಳ ಬೆಳವಣಿಗೆಯ ಶ್ವಾಸಕೋಶಗಳು ಹೆಚ್ಚು ಸೂಕ್ಷ್ಮ, ಹೊರಾಂಗಣ ಆಟದ ಸಮಯ ಮಿತಿಗೊಳಿಸಿ ಮತ್ತು ಕೆಮ್ಮು ಅಥವಾ ಉಸಿರಾಟದ ತೊಂದರೆಯನ್ನು ಗಮನಿಸಿ.",
+        "tamil": "குழந்தைகளின் வளரும் நுரையீரல்கள் மிகவும் உணர்திறன் கொண்டவை, வெளிப்புற விளையாட்டு நேரத்தை கட்டுப்படுத்தி இருமல் அல்லது சுவாசிக்க சிரமத்தை கண்காணிக்கவும்."
     },
     "outdoor_workers": {
         "english": "Outdoor workers should take frequent breaks indoors, use N95 masks during work hours, and stay hydrated throughout shifts.",
@@ -135,13 +132,11 @@ def get_attribution(data: PipelineInput) -> dict:
 
     return sources
 
-# ── PIPELINE ENDPOINT ─────────────────────────────────────────
 @router.post("/analyze")
 def run_full_pipeline(data: PipelineInput):
     pipeline_start = time.time()
     steps = []
 
-    # ── STEP 1: FORECAST ─────────────────────────────────────
     t0 = time.time()
     now = datetime.now()
     input_df = pd.DataFrame([{
@@ -161,7 +156,6 @@ def run_full_pipeline(data: PipelineInput):
     forecast_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "1. Forecasting Agent", "time_ms": forecast_time})
 
-    # ── STEP 2: ATTRIBUTION ──────────────────────────────────
     t0 = time.time()
     sources = get_attribution(data)
     primary_source = sources[0]["source"]
@@ -169,7 +163,6 @@ def run_full_pipeline(data: PipelineInput):
     attribution_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "2. Source Attribution Agent", "time_ms": attribution_time})
 
-    # ── STEP 3: ENFORCEMENT ──────────────────────────────────
     t0 = time.time()
     enforcement_score = 0
     enforcement_actions = []
@@ -211,13 +204,11 @@ def run_full_pipeline(data: PipelineInput):
     enforcement_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "3. Enforcement Agent", "time_ms": enforcement_time})
 
-    # ── STEP 4: ADVISORY ─────────────────────────────────────
     t0 = time.time()
     advisory = get_advisory(predicted_aqi, data.population_type, data.language)
     advisory_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "4. Citizen Advisory Agent", "time_ms": advisory_time})
 
-    # ── TOTAL TIME ───────────────────────────────────────────
     total_time_ms = round((time.time() - pipeline_start) * 1000, 2)
 
     return {
