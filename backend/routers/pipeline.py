@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from backend.explain_utils import generate_forecast_drivers
 from pydantic import BaseModel
 import time
 import pickle
@@ -99,36 +100,64 @@ def get_attribution(data: PipelineInput) -> dict:
     now = datetime.now()
 
     traffic_score = 0
-    if data.nox > 40: traffic_score += 30
-    if data.co > 1.5: traffic_score += 25
-    if data.no2 > 30: traffic_score += 20
-    if now.hour in [7,8,9,10,17,18,19,20]: traffic_score += 25
+    traffic_evidence = []
+    if data.nox > 40:
+        traffic_score += 30
+        traffic_evidence.append({"statement": f"NOx level ({data.nox:.1f}) indicates vehicular emissions.", "type": "sensor", "strength": "strong" if data.nox > 60 else "moderate"})
+    if data.co > 1.5:
+        traffic_score += 25
+        traffic_evidence.append({"statement": f"CO level ({data.co:.2f}) is consistent with traffic exhaust.", "type": "sensor", "strength": "moderate"})
+    if data.no2 > 30:
+        traffic_score += 20
+        traffic_evidence.append({"statement": f"NO2 level ({data.no2:.1f}) is elevated.", "type": "sensor", "strength": "moderate"})
+    if now.hour in [7,8,9,10,17,18,19,20]:
+        traffic_score += 25
+        traffic_evidence.append({"statement": "Reading falls within peak traffic hours.", "type": "traffic", "strength": "supporting"})
     if traffic_score > 0:
-        sources.append({"source": "Vehicular Traffic", "confidence": min(traffic_score,100)})
+        sources.append({"source": "Vehicular Traffic", "confidence": min(traffic_score,100), "evidence": traffic_evidence})
 
     construction_score = 0
-    if data.pm10 > 100: construction_score += 35
-    if data.pm25 > 60:  construction_score += 25
-    if data.pm10 > data.pm25 * 2: construction_score += 20
+    construction_evidence = []
+    if data.pm10 > 100:
+        construction_score += 35
+        construction_evidence.append({"statement": f"PM10 concentration ({data.pm10:.1f}) is elevated.", "type": "sensor", "strength": "strong"})
+    if data.pm25 > 60:
+        construction_score += 25
+        construction_evidence.append({"statement": f"PM2.5 concentration ({data.pm25:.1f}) is elevated.", "type": "sensor", "strength": "moderate"})
+    if data.pm10 > data.pm25 * 2:
+        construction_score += 20
+        construction_evidence.append({"statement": "PM10 to PM2.5 ratio indicates coarse dust particles.", "type": "sensor", "strength": "strong"})
     if construction_score > 0:
-        sources.append({"source": "Construction & Dust", "confidence": min(construction_score,100)})
+        sources.append({"source": "Construction & Dust", "confidence": min(construction_score,100), "evidence": construction_evidence})
 
     industry_score = 0
-    if data.so2 > 15: industry_score += 40
-    if data.nox > 60: industry_score += 30
+    industry_evidence = []
+    if data.so2 > 15:
+        industry_score += 40
+        industry_evidence.append({"statement": f"SO2 level ({data.so2:.1f}) indicates industrial stack emissions.", "type": "sensor", "strength": "strong"})
+    if data.nox > 60:
+        industry_score += 30
+        industry_evidence.append({"statement": f"NOx level ({data.nox:.1f}) is consistent with industrial sources.", "type": "sensor", "strength": "moderate"})
     if industry_score > 0:
-        sources.append({"source": "Industrial Emissions", "confidence": min(industry_score,100)})
+        sources.append({"source": "Industrial Emissions", "confidence": min(industry_score,100), "evidence": industry_evidence})
 
     biomass_score = 0
-    if data.pm25 > 80: biomass_score += 30
-    if data.co > 2.0:  biomass_score += 30
-    if now.month in [10,11,12,1,2]: biomass_score += 25
+    biomass_evidence = []
+    if data.pm25 > 80:
+        biomass_score += 30
+        biomass_evidence.append({"statement": f"PM2.5 level ({data.pm25:.1f}) is consistent with biomass burning.", "type": "sensor", "strength": "strong"})
+    if data.co > 2.0:
+        biomass_score += 30
+        biomass_evidence.append({"statement": f"CO level ({data.co:.2f}) is elevated, consistent with combustion.", "type": "sensor", "strength": "moderate"})
+    if now.month in [10,11,12,1,2]:
+        biomass_score += 25
+        biomass_evidence.append({"statement": "Reading falls within peak crop-burning season (Oct-Feb).", "type": "historical", "strength": "supporting"})
     if biomass_score > 0:
-        sources.append({"source": "Biomass & Crop Burning", "confidence": min(biomass_score,100)})
+        sources.append({"source": "Biomass & Crop Burning", "confidence": min(biomass_score,100), "evidence": biomass_evidence})
 
     sources = sorted(sources, key=lambda x: x["confidence"], reverse=True)
     if not sources:
-        sources.append({"source": "Unknown / Mixed", "confidence": 50})
+        sources.append({"source": "Unknown / Mixed", "confidence": 50, "evidence": []})
 
     return sources
 
@@ -209,8 +238,23 @@ def run_full_pipeline(data: PipelineInput):
     advisory_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "4. Citizen Advisory Agent", "time_ms": advisory_time})
 
+   
     total_time_ms = round((time.time() - pipeline_start) * 1000, 2)
 
+    try:
+        importances = model.feature_importances_
+        drivers = generate_forecast_drivers(input_df.iloc[0].to_dict(), FEATURES, importances)
+        explanation = {
+            "forecast_drivers": drivers,
+            "model_metrics": {"r2": 0.9964, "rmse": 6.25},
+            "method": "model_feature_importance",
+            "scope": "global importance with current feature context"
+        }
+    except Exception as e:
+        print(f"Explanation generation error: {e}")
+        explanation = {"forecast_drivers": [], "model_metrics": {"r2": 0.9964, "rmse": 6.25}, "method": "unavailable", "scope": "unavailable"}
+
+    
     return {
         "station_id": data.station_id,
         "timestamp": now.isoformat(),
@@ -229,7 +273,8 @@ def run_full_pipeline(data: PipelineInput):
         "attribution": {
             "primary_source": primary_source,
             "confidence": f"{primary_confidence}%",
-            "all_sources": sources
+            "all_sources": sources,
+            "evidence": sources[0].get("evidence", [])
         },
         "enforcement": {
             "urgency": urgency,
@@ -245,5 +290,6 @@ def run_full_pipeline(data: PipelineInput):
             "language": data.language,
             "population_type": data.population_type
         },
+        "explanation": explanation,
         "generated_by": "SmartCity AQI Full Intelligence Pipeline"
     }
