@@ -16,7 +16,7 @@ export default function AIInterventionSimulator({ currentAqi, currentCategory })
 
   return (
     <div id="intervention-simulator">
-      <div className="page-title">AI Intervention Simulator</div>
+      <div className="page-title">Intervention Planning</div>
       <div className="page-subtitle">Estimate the impact of operational interventions before implementation</div>
 
       <div className="sim-status-row">

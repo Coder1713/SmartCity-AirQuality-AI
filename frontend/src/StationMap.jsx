@@ -11,7 +11,7 @@ const getColor = (aqi) => {
   return '#7e0023';
 };
 
-export default function StationMap({ stationsData, onSelectStation }) {
+export default function StationMap({ stationsData, onSelectStation, selectedStation }) {
   return (
     <div className="map-container">
       <MapContainer center={[28.6139, 77.2090]} zoom={10} style={{ height: '100%', width: '100%' }}>
@@ -25,11 +25,11 @@ export default function StationMap({ stationsData, onSelectStation }) {
             <CircleMarker
               key={id}
               center={coords}
-              radius={12}
+              radius={id === selectedStation ? 15 : 11}
               fillColor={getColor(aqi)}
-              fillOpacity={0.8}
-              color="#0f1419"
-              weight={2}
+              fillOpacity={id === selectedStation ? 1 : 0.75}
+              color={id === selectedStation ? '#e8a33d' : '#0f1419'}
+              weight={id === selectedStation ? 3 : 2}
               eventHandlers={{ click: () => onSelectStation && onSelectStation(id) }}
             >
               <Popup>

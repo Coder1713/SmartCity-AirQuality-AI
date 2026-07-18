@@ -108,7 +108,7 @@ export default function ExplainableAI({ result }) {
 
   return (
     <div id="explainable-ai">
-      <div className="page-title">Explainable AI</div>
+      <div className="page-title">Evidence & Reasoning</div>
       <div className="page-subtitle-row">
         <span className="page-subtitle">Evidence behind the current forecast and source attribution</span>
         <span className="explain-status-badge">Model explanation available</span>

@@ -137,7 +137,7 @@ export default function App() {
         {error && <div className="card" style={{borderColor: '#e04545', color: '#e04545', marginBottom: 24}}>{error}</div>}
 
         <div id="forecast">
-          <div className="page-title">Hyperlocal Forecast</div>
+          <div className="page-title">Forecast Intelligence</div>
           <div className="page-subtitle">Station {selectedStation}, 72 hour history and 72 hour projection</div>
           <div className="card" style={{marginBottom: 24}}>
             <div className="chart-header">
@@ -154,7 +154,7 @@ export default function App() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#2d3448" />
                   <XAxis dataKey="time" stroke="#8b92a8" fontSize={10} interval={23} />
                   <YAxis stroke="#8b92a8" fontSize={11} />
-                  <Tooltip contentStyle={{ background: '#1a1f2e', border: '1px solid #2d3448', fontFamily: 'IBM Plex Mono', fontSize: 12 }} />
+                  <Tooltip contentStyle={{ background: '#1a1f2e', border: '1px solid #2d3448', fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#f3f4f6' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#c5cbd6' }} />
                   <Line type="monotone" dataKey="actual" stroke="#8b92a8" strokeWidth={2} dot={false} name="Actual" />
                   <Line type="monotone" dataKey="forecast" stroke="#e8a33d" strokeWidth={2} strokeDasharray="5 3" dot={false} name="Forecast" />
                 </LineChart>
@@ -204,24 +204,32 @@ export default function App() {
             </div>
 
             <div id="attribution">
-              <div className="page-title">Source Attribution</div>
-              <div className="card" style={{marginBottom: 24}}>
-                <h3 style={{fontSize: 20, marginBottom: 4}}>{result.attribution.primary_source}</h3>
-                <div className="confidence-bar-track">
-                  <div className="confidence-bar-fill" style={{width: result.attribution.confidence}}></div>
-                </div>
-                <div style={{fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-dim)', marginBottom: 16}}>{result.attribution.confidence} confidence</div>
-                {result.attribution.all_sources.map((s,i) => (
-                  <div className="source-row" key={i}>
-                    <span>{s.source}</span>
-                    <span style={{color: 'var(--amber)'}}>{s.confidence}%</span>
+              <div className="page-title">Pollution Source Analysis & Field Response Plan</div>
+              <div className="split-row" id="enforcement">
+                <div className="card">
+                  <h3 style={{fontSize: 14, marginBottom: 4}}>{result.attribution.primary_source}</h3>
+                  <div className="confidence-bar-track">
+                    <div className="confidence-bar-fill" style={{width: result.attribution.confidence}}></div>
                   </div>
-                ))}
+                  <div style={{fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-dim)', marginBottom: 12}}>{result.attribution.confidence} confidence</div>
+                  {result.attribution.all_sources.map((s,i) => (
+                    <div className="source-row" key={i}>
+                      <span>{s.source}</span>
+                      <span style={{color: 'var(--amber)'}}>{s.confidence}%</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="card">
+                  <span className={`urgency-badge urgency-${result.enforcement.urgency}`}>{result.enforcement.urgency} Priority</span>
+                  <ul className="action-list" style={{marginTop: 10}}>
+                    {result.enforcement.recommended_actions.map((a,i) => <li key={i}>{a}</li>)}
+                  </ul>
+                </div>
               </div>
             </div>
 
             <div id="enforcement">
-              <div className="page-title">Enforcement Actions</div>
+              <div className="page-title">Field Response Plan</div>
               <div className="card" style={{marginBottom: 24}}>
                 <span className={`urgency-badge urgency-${result.enforcement.urgency}`}>{result.enforcement.urgency} Priority</span>
                 <ul className="action-list" style={{marginTop: 14}}>
@@ -231,7 +239,7 @@ export default function App() {
             </div>
 
             <div id="advisory">
-              <div className="page-title">Citizen Health Advisory</div>
+              <div className="page-title">Public Health Guidance</div>
               <div className="card" style={{marginBottom: 24}}>
                 <div className="advisory-tags">
                   <span className="advisory-tag">{language}</span>
@@ -247,20 +255,28 @@ export default function App() {
           </>
         )}
 
-        <div className="page-title">Geospatial Station Map</div>
-        <div className="page-subtitle">Click any station to load its forecast above</div>
-        <div className="card" style={{marginBottom: 24}}>
-          <StationMap stationsData={stationsAqi} onSelectStation={setSelectedStation} />
-          <div className="map-legend">
-            <span><span className="map-legend-dot" style={{background: '#00e400'}}></span>Good</span>
-            <span><span className="map-legend-dot" style={{background: '#ffff00'}}></span>Moderate</span>
-            <span><span className="map-legend-dot" style={{background: '#ff7e00'}}></span>Poor</span>
-            <span><span className="map-legend-dot" style={{background: '#7e0023'}}></span>Severe</span>
+        <div className="page-title">Station Operations Map</div>
+        <div className="page-subtitle">Select a station for details, this also updates the forecast above</div>
+        <div className="split-row-map" style={{marginBottom: 24}}>
+          <div className="card" style={{padding: 0}}>
+            <StationMap stationsData={stationsAqi} onSelectStation={setSelectedStation} selectedStation={selectedStation} />
+          </div>
+          <div className="card station-detail-panel">
+            <div className="command-strip-label">Selected Station</div>
+            <div className="command-strip-value" style={{fontSize: 20, marginBottom: 10}}>{selectedStation}</div>
+            <div className="feasibility-row"><span>Current AQI</span><span>{stationsAqi[selectedStation] ? Math.round(stationsAqi[selectedStation]) : '—'}</span></div>
+            <div className="feasibility-row"><span>Category</span><span>{result ? result.forecast.category : '—'}</span></div>
+            <div className="map-legend" style={{marginTop: 16, flexDirection: 'column', gap: 8}}>
+              <span><span className="map-legend-dot" style={{background: '#00e400'}}></span>Good</span>
+              <span><span className="map-legend-dot" style={{background: '#ffff00'}}></span>Moderate</span>
+              <span><span className="map-legend-dot" style={{background: '#ff7e00'}}></span>Poor</span>
+              <span><span className="map-legend-dot" style={{background: '#7e0023'}}></span>Severe</span>
+            </div>
           </div>
         </div>
 
         <div id="multicity">
-          <div className="page-title">Multi-City Comparative Intelligence</div>
+          <div className="page-title">Regional Comparison</div>
           <div className="card">
             <table className="compare-table">
               <thead>
