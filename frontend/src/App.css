@@ -11,7 +11,7 @@
   --text: #e8eaf0;
   --text-dim: #8b92a8;
   --mono: 'IBM Plex Mono', monospace;
-  --sans: 'IBM Plex Sans', sans-serif;
+  --sans: 'Inter', sans-serif;
 }
 
 body {
@@ -1285,3 +1285,33 @@ select, .run-btn { line-height: 1.3; }
 .explain-grid .card, .split-row .card, .sim-summary-grid .card {
   border: none;
 }
+/* ── TYPOGRAPHY REFACTOR: sentence case, modern SaaS feel ── */
+.eyebrow, .hero-eyebrow, .sidebar-brand, .sidebar-link,
+.command-strip-label, .kpi-label, .kpi-tag,
+.control-field label, .page-title, .section-label,
+.stage-num, .stage-title, .evidence-meta, .impact-label,
+.pipeline-status-badge, button.primary, .run-btn,
+.hero-btn-primary, .hero-btn-secondary, .badge,
+.urgency-badge, .advisory-tag, .explain-status-badge,
+.compare-table th, .map-legend, .verification-note {
+  text-transform: none;
+  letter-spacing: normal;
+  font-family: var(--sans);
+}
+
+/* Restore mono + slight tracking only for true numeric/timestamp elements */
+.aqi-value, .stage-result, .kpi-value, .command-strip-value,
+.pipeline-time .big-number, .explain-headline-value, .sim-aqi-num,
+.timing-tag, .timing-row, .stage-timing, .contribution-pct,
+.confidence-item-top, .feasibility-row, .source-row,
+.evidence-row .contribution-pct, .command-strip-value {
+  font-family: var(--mono);
+}
+
+/* Buttons and nav read as normal UI copy, not console commands */
+button.primary, .run-btn, .hero-btn-primary, .hero-btn-secondary,
+.sidebar-link, select {
+  font-weight: 500;
+}
+
+.page-title { font-weight: 600; }
