@@ -1,4 +1,5 @@
 from fastapi import APIRouter
+from backend.decision_engine import build_decision_context, generate_field_response_plan, generate_health_guidance
 from backend.explain_utils import generate_forecast_drivers
 from pydantic import BaseModel
 import time
@@ -193,48 +194,26 @@ def run_full_pipeline(data: PipelineInput):
     steps.append({"step": "2. Source Attribution Agent", "time_ms": attribution_time})
 
     t0 = time.time()
-    enforcement_score = 0
-    enforcement_actions = []
-    reasons = []
-
-    if predicted_aqi > 300:
-        enforcement_score += 40
-        reasons.append(f"Severe AQI ({predicted_aqi:.0f})")
-    elif predicted_aqi > 200:
-        enforcement_score += 30
-        reasons.append(f"Very Poor AQI ({predicted_aqi:.0f})")
-    elif predicted_aqi > 100:
-        enforcement_score += 15
-        reasons.append(f"Moderate AQI ({predicted_aqi:.0f})")
-
-    if "Industrial" in primary_source:
-        enforcement_score += 40
-        enforcement_actions.append("Inspect nearby industrial units for CPCB compliance")
-        enforcement_actions.append("Check stack emission permits")
-    elif "Vehicular" in primary_source:
-        enforcement_score += 30
-        enforcement_actions.append("Deploy traffic management at this station zone")
-        enforcement_actions.append("Check diesel vehicle PUC compliance")
-    elif "Construction" in primary_source:
-        enforcement_score += 35
-        enforcement_actions.append("Inspect construction sites for dust suppression")
-        enforcement_actions.append("Verify water sprinkling compliance")
-    elif "Biomass" in primary_source:
-        enforcement_score += 35
-        enforcement_actions.append("Deploy field teams to locate active burning")
-        enforcement_actions.append("Issue notices to identified burning locations")
-
-    urgency = (
-        "IMMEDIATE" if enforcement_score >= 70 else
-        "HIGH"      if enforcement_score >= 50 else
-        "MEDIUM"    if enforcement_score >= 30 else
-        "LOW"
-    )
+    try:
+        ctx = build_decision_context(
+            data.station_id, data.aqi_lag1, predicted_aqi, category, primary_source, f"{primary_confidence}%"
+        )
+        field_response = generate_field_response_plan(ctx)
+    except Exception as e:
+        print(f"Field response generation error: {e}")
+        field_response = {"severity": "unavailable", "summary": "Field response unavailable for this run.", "actions": []}
+    enforcement_time = round((time.time() - t0) * 1000, 2)
+    steps.append({"step": "3. Enforcement Agent", "time_ms": enforcement_time})
     enforcement_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "3. Enforcement Agent", "time_ms": enforcement_time})
 
     t0 = time.time()
     advisory = get_advisory(predicted_aqi, data.population_type, data.language)
+    try:
+        health_guidance = generate_health_guidance(ctx)
+    except Exception as e:
+        print(f"Health guidance generation error: {e}")
+        health_guidance = {"risk_level": "unavailable", "summary": "Guidance unavailable for this run.", "general_public": [], "sensitive_groups": [], "schools": [], "outdoor_workers": [], "recommended_window": None, "emergency_signs": [], "method": "unavailable"}
     advisory_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "4. Citizen Advisory Agent", "time_ms": advisory_time})
 
@@ -277,10 +256,9 @@ def run_full_pipeline(data: PipelineInput):
             "evidence": sources[0].get("evidence", [])
         },
         "enforcement": {
-            "urgency": urgency,
-            "enforcement_score": min(enforcement_score, 100),
-            "reasons": reasons,
-            "recommended_actions": enforcement_actions
+            "severity": field_response["severity"],
+            "summary": field_response["summary"],
+            "actions": field_response["actions"]
         },
         "advisory": {
             "alert_level": advisory["alert_level"],
@@ -288,7 +266,16 @@ def run_full_pipeline(data: PipelineInput):
             "health_advice": advisory["health_advice"],
             "recommended_actions": advisory["recommended_actions"],
             "language": data.language,
-            "population_type": data.population_type
+            "population_type": data.population_type,
+            "risk_level": health_guidance["risk_level"],
+            "summary": health_guidance["summary"],
+            "general_public": health_guidance["general_public"],
+            "sensitive_groups": health_guidance["sensitive_groups"],
+            "schools": health_guidance["schools"],
+            "outdoor_workers": health_guidance["outdoor_workers"],
+            "recommended_window": health_guidance["recommended_window"],
+            "emergency_signs": health_guidance["emergency_signs"],
+            "method": health_guidance["method"]
         },
         "explanation": explanation,
         "generated_by": "SmartCity AQI Full Intelligence Pipeline"
