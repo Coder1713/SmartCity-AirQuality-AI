@@ -26,7 +26,7 @@ export default function CommandStrip({ result, cities, loading }) {
       </div>
       <div className="command-strip-item">
         <div className="command-strip-label">24h Forecast</div>
-        <div className="command-strip-value">{result ? Math.round(result.forecast.predicted_aqi * 1.1) : '—'}</div>
+        <div className="command-strip-value">{result?.decision_context?.forecast_24h_aqi ?? '—'}</div>
       </div>
       <div className="command-strip-item">
         <div className="command-strip-label">High Risk Stations</div>

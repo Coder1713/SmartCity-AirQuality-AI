@@ -38,19 +38,16 @@ def get_station_history(station_id: str, hours: int = 168):
     return {"station_id": station_id, "points": points, "count": len(points)}
 
 
-@router.get("/forecast-curve/{station_id}")
-def get_forecast_curve(station_id: str):
+def generate_forecast_points(station_id: str):
+    """Reusable core forecast logic, importable by other routers."""
     if model is None:
-        return {"error": "Model not loaded"}
-
+        return None
     station_data = HISTORY_DF[HISTORY_DF['StationId'] == station_id].tail(24)
     if station_data.empty:
-        return {"station_id": station_id, "points": [], "error": "No history found"}
+        return None
 
     last_row = station_data.iloc[-1]
     recent_aqi = station_data['AQI'].tolist()
-
-    points = []
     now = datetime.now()
 
     aqi_lag1 = float(recent_aqi[-1]) if len(recent_aqi) >= 1 else 150.0
@@ -60,9 +57,9 @@ def get_forecast_curve(station_id: str):
     roll6 = sum(recent_aqi[-6:]) / len(recent_aqi[-6:]) if recent_aqi else 150.0
     roll24 = sum(recent_aqi) / len(recent_aqi) if recent_aqi else 150.0
 
+    points = []
     for h in range(1, 73):
         future_time = now + timedelta(hours=h)
-
         input_df = pd.DataFrame([{
             'PM2.5': float(last_row['PM2.5']), 'PM10': float(last_row['PM10']),
             'NO': float(last_row['NO']), 'NO2': float(last_row['NO2']), 'NOx': float(last_row['NOx']),
@@ -74,15 +71,25 @@ def get_forecast_curve(station_id: str):
             'AQI_lag1': aqi_lag1, 'AQI_lag3': aqi_lag3, 'AQI_lag6': aqi_lag6, 'AQI_lag24': aqi_lag24,
             'AQI_roll6': roll6, 'AQI_roll24': roll24,
         }])
-
         raw_predicted = float(model.predict(input_df[FEATURES])[0])
         predicted = (0.6 * raw_predicted) + (0.4 * roll24)
         predicted = max(0, round(predicted, 1))
-
-        points.append({"timestamp": future_time.isoformat(), "aqi": predicted, "type": "forecast"})
-
+        points.append({"timestamp": future_time.isoformat(), "aqi": predicted})
         aqi_lag1 = predicted
         roll6 = (roll6 * 5 + predicted) / 6
         roll24 = (roll24 * 23 + predicted) / 24
 
-    return {"station_id": station_id, "points": points, "count": len(points)}
+    return points
+
+
+@router.get("/forecast-curve/{station_id}")
+def get_forecast_curve(station_id: str):
+    """24-72 hour forecast projection based on last known conditions"""
+    points = generate_forecast_points(station_id)
+    if points is None:
+        return {"station_id": station_id, "points": [], "error": "No history found or model unavailable"}
+    return {
+        "station_id": station_id,
+        "points": [{"timestamp": p["timestamp"], "aqi": p["aqi"], "type": "forecast"} for p in points],
+        "count": len(points)
+    }

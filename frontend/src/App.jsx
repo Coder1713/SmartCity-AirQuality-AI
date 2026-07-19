@@ -129,7 +129,7 @@ export default function App() {
         <div className="control-bar">
           <div className="control-field">
             <label>Station</label>
-            <select value={selectedStation} onChange={e => setSelectedStation(e.target.value)}>
+            <select value={selectedStation} onChange={e => { setSelectedStation(e.target.value); setResult(null); }}>
               {DELHI_STATIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>

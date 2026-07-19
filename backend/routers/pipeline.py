@@ -5,8 +5,10 @@ import pandas as pd
 from datetime import datetime
 from backend.shared import get_model_and_features, get_aqi_category
 from backend.decision_engine import build_decision_context, generate_field_response_plan, generate_health_guidance
+from backend.decision_context import compute_decision_context
 from backend.explain_utils import generate_forecast_drivers
 from backend.routers.advisory import ADVISORY_TRANSLATIONS
+from backend.routers.trend import generate_forecast_points
 
 router = APIRouter()
 
@@ -60,14 +62,9 @@ POPULATION_ADDENDUM = {
 }
 
 def get_advisory(aqi: float, population_type: str, language: str = "english") -> dict:
-    if aqi <= 50:
-        level = "green"
-    elif aqi <= 100:
-        level = "yellow"
-    elif aqi <= 200:
-        level = "orange"
-    else:
-        level = "red"
+    category = get_aqi_category(aqi)
+    level = {"Good": "green", "Satisfactory": "green", "Moderate": "yellow",
+              "Poor": "orange", "Very Poor": "red", "Severe": "red"}[category]
 
     lang = language if language in ["english", "hindi", "kannada", "tamil"] else "english"
     content = ADVISORY_TRANSLATIONS[level][lang]
@@ -185,20 +182,44 @@ def run_full_pipeline(data: PipelineInput):
 
     t0 = time.time()
     try:
-        ctx = build_decision_context(
-            data.station_id, data.aqi_lag1, predicted_aqi, category, primary_source, f"{primary_confidence}%"
-        )
+        forecast_points = generate_forecast_points(data.station_id)
+    except Exception as e:
+        print(f"Forecast curve fetch error: {e}")
+        forecast_points = None
+
+    trend_label = "worsening" if (predicted_aqi - data.aqi_lag1) > 5 else "improving" if (predicted_aqi - data.aqi_lag1) < -5 else "stable"
+
+    try:
+        decision_ctx = compute_decision_context(data.aqi_lag1, predicted_aqi, forecast_points, trend_label)
+        ctx = {
+            "station_id": data.station_id, "current_aqi": decision_ctx["current_aqi"],
+            "predicted_aqi": predicted_aqi, "category": decision_ctx["decision_category"],
+            "trend": trend_label, "trend_delta": round(predicted_aqi - data.aqi_lag1, 1),
+            "dominant_source": primary_source, "source_confidence": f"{primary_confidence}%",
+        }
         field_response = generate_field_response_plan(ctx)
+        field_response["decision_category"] = decision_ctx["decision_category"]
+        field_response["basis"] = f"Decision AQI {decision_ctx['decision_aqi']} based on {decision_ctx['decision_basis']}"
     except Exception as e:
         print(f"Field response generation error: {e}")
-        field_response = {"severity": "unavailable", "summary": "Field response unavailable for this run.", "actions": []}
+        decision_ctx = None
+        field_response = {"severity": "unavailable", "summary": "Field response unavailable for this run.", "actions": [], "decision_category": None, "basis": None}
     enforcement_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "3. Enforcement Agent", "time_ms": enforcement_time})
 
     t0 = time.time()
     advisory = get_advisory(predicted_aqi, data.population_type, data.language)
     try:
-        health_guidance = generate_health_guidance(ctx)
+        health_guidance = generate_health_guidance(ctx) if decision_ctx else {
+            "risk_level": "unavailable", "summary": "Guidance unavailable for this run.",
+            "general_public": [], "sensitive_groups": [], "schools": [], "outdoor_workers": [],
+            "recommended_window": None, "emergency_signs": [], "method": "unavailable"
+        }
+        if decision_ctx and decision_ctx["decision_category"] != decision_ctx["immediate_prediction_category"]:
+            health_guidance["summary"] = (
+                f"Air quality is currently {decision_ctx['current_category']} but is forecast to reach "
+                f"{decision_ctx['decision_category']} conditions ({decision_ctx['decision_basis']})."
+            )
     except Exception as e:
         print(f"Health guidance generation error: {e}")
         health_guidance = {"risk_level": "unavailable", "summary": "Guidance unavailable for this run.", "general_public": [], "sensitive_groups": [], "schools": [], "outdoor_workers": [], "recommended_window": None, "emergency_signs": [], "method": "unavailable"}
@@ -213,12 +234,13 @@ def run_full_pipeline(data: PipelineInput):
         explanation = {
             "forecast_drivers": drivers,
             "model_metrics": {"r2": 0.9964, "rmse": 6.25},
-            "method": "model_feature_importance",
+            "method": "global_model_importance",
+            "method_label": "Global model importance",
             "scope": "global importance with current feature context"
         }
     except Exception as e:
         print(f"Explanation generation error: {e}")
-        explanation = {"forecast_drivers": [], "model_metrics": {"r2": 0.9964, "rmse": 6.25}, "method": "unavailable", "scope": "unavailable"}
+        explanation = {"forecast_drivers": [], "model_metrics": {"r2": 0.9964, "rmse": 6.25}, "method": "unavailable", "method_label": "unavailable", "scope": "unavailable"}
 
     return {
         "station_id": data.station_id,
@@ -235,16 +257,20 @@ def run_full_pipeline(data: PipelineInput):
             "model_r2": 0.9964,
             "model_rmse": 6.25
         },
+        "decision_context": decision_ctx,
         "attribution": {
             "primary_source": primary_source,
             "confidence": f"{primary_confidence}%",
+            "confidence_label": "evidence_score",
             "all_sources": sources,
             "evidence": sources[0].get("evidence", [])
         },
         "enforcement": {
             "severity": field_response["severity"],
             "summary": field_response["summary"],
-            "actions": field_response["actions"]
+            "actions": field_response["actions"],
+            "decision_category": field_response.get("decision_category"),
+            "basis": field_response.get("basis")
         },
         "advisory": {
             "alert_level": advisory["alert_level"],

@@ -1,4 +1,8 @@
-import { VERIFICATION_CHECKLIST_FALLBACK, DATA_COMPLETENESS_FALLBACK, HISTORICAL_MATCH_FALLBACK } from './explainData';
+import {
+  VERIFICATION_CHECKLIST_FALLBACK,
+  DATA_COMPLETENESS_FALLBACK,
+  HISTORICAL_MATCH_FALLBACK
+} from './explainData';
 
 const IMPACT_COLOR = { high: '#e04545', medium: '#e8a33d', low: 'var(--text-dim)' };
 const STRENGTH_COLOR = { strong: '#4ade80', moderate: '#e8a33d', supporting: 'var(--text-dim)' };
@@ -26,10 +30,10 @@ function ForecastEvidence({ result }) {
             <span className="impact-label" style={{color: IMPACT_COLOR[f.impact]}}>{f.impact} impact</span>
           </div>
           <div className="evidence-observation">{f.observation}</div>
-          <div className="contribution-track" role="progressbar" aria-valuenow={Math.round(f.importance*100)} aria-valuemin={0} aria-valuemax={100}>
-            <div className="contribution-fill" style={{width: `${Math.round(f.importance*100)}%`}}></div>
+          <div className="contribution-track" role="progressbar" aria-valuenow={(f.importance*100).toFixed(1)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="contribution-fill" style={{width: `${Math.max(f.importance*100, 1)}%`}}></div>
           </div>
-          <div className="contribution-pct">{Math.round(f.importance*100)}% model importance</div>
+          <div className="contribution-pct">{(f.importance*100).toFixed(1)}% {result?.explanation?.method_label || 'global model importance'}</div>
         </div>
       ))}
       <div className="evidence-meta" style={{marginTop: 10}}>Drivers are based on model feature importance and current input conditions.</div>
@@ -46,6 +50,7 @@ function AttributionEvidence({ result }) {
       <h3 style={{fontSize: 14, marginBottom: 4}}>Why was this source identified?</h3>
       <div className="explain-headline-row">
         <span className="explain-headline-value" style={{fontSize: 20}}>{result.attribution.primary_source}</span>
+        <span className="explain-headline-label">{result.attribution.confidence} evidence score</span>
       </div>
       {evidence.length === 0 ? (
         <div className="evidence-observation">Explanation unavailable for this run.</div>
@@ -67,7 +72,7 @@ function ConfidenceBreakdown({ result }) {
   const attributionConfidence = result ? parseInt(result.attribution.confidence) : null;
   const items = [
     { label: 'Forecast confidence', value: forecastConfidence },
-    { label: 'Source attribution confidence', value: attributionConfidence },
+    { label: 'Source attribution evidence score', value: attributionConfidence },
     { label: 'Data completeness', value: result ? DATA_COMPLETENESS_FALLBACK : null },
     { label: 'Historical pattern match', value: result ? HISTORICAL_MATCH_FALLBACK : null },
   ];

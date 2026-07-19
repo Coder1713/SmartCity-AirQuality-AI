@@ -46,7 +46,7 @@ def generate_forecast_drivers(input_dict, feature_names, importances, top_n=6):
         drivers.append({
             "feature": fname, "label": label,
             "value": round(value, 2) if isinstance(value, (int, float)) else value,
-            "importance": round(norm_imp, 3), "impact": impact,
+            "importance": round(norm_imp, 4), "impact": impact,
             "direction": direction, "observation": observation
         })
 
