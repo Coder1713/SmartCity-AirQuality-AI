@@ -12,6 +12,17 @@ const CATEGORY_COLORS = {
   Poor: '#e8743d', 'Very Poor': '#e04545', Severe: '#a12842'
 };
 
+const ICONS = {
+  overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+  forecast: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 17l6-6 4 4 8-8"/></svg>,
+  'explainable-ai': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>,
+  'intervention-simulator': <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 21v-7M4 10V3M12 21v-11M12 6V3M20 21v-5M20 12V3"/><path d="M2 14h4M8 8h8M18 16h4"/></svg>,
+  attribution: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>,
+  enforcement: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/></svg>,
+  advisory: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 21c-4-3-8-6-8-11a8 8 0 0116 0c0 5-4 8-8 11z"/><path d="M12 8v5"/></svg>,
+  multicity: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 21h18M6 21V8l6-4 6 4v13M9 21v-6h6v6"/></svg>,
+};
+
 const SECTIONS = [
   { id: 'overview', label: 'Overview' },
   { id: 'forecast', label: 'Forecast' },
@@ -116,6 +127,7 @@ export default function App() {
         <div className="sidebar-brand">SmartCity AQI</div>
         {SECTIONS.map(s => (
           <a key={s.id} className={`sidebar-link ${activeSection === s.id ? 'active' : ''}`} onClick={() => scrollTo(s.id)}>
+            <span className="sidebar-icon">{ICONS[s.id]}</span>
             {s.label}
           </a>
         ))}
@@ -123,7 +135,7 @@ export default function App() {
 
       <div className="main">
         <div id="overview">
-          <CommandStrip result={result} cities={cities} loading={loading} />
+          <CommandStrip result={result} cities={cities} loading={loading} onRunPipeline={runPipeline} />
         </div>
 
         <div className="control-bar">

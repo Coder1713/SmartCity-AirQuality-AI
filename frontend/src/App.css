@@ -1315,3 +1315,91 @@ button.primary, .run-btn, .hero-btn-primary, .hero-btn-secondary,
 }
 
 .page-title { font-weight: 600; }
+/* ── PRODUCTION POLISH PASS ── */
+
+/* Spacing scale */
+.main { padding: 0 40px 80px; }
+.page-title { margin: 40px 0 6px; font-size: 22px; }
+.page-subtitle { margin-bottom: 24px; }
+.card, .pipeline-step, .workflow-stage, .explain-panel, .sim-controls {
+  padding: 20px;
+  border-radius: 6px;
+}
+.grid, .explain-grid, .workflow, .split-row { border-radius: 6px; overflow: hidden; }
+
+/* Card hover elevation (subtle) */
+.card {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.card:hover { border-color: #3a4258; }
+
+/* Buttons: subtle transitions */
+button.primary, .run-btn, .hero-btn-primary, select {
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+/* Sidebar polish */
+.sidebar { padding: 28px 0; width: 200px; }
+.sidebar-brand { padding: 0 22px 22px; font-size: 11px; letter-spacing: 1px; }
+.sidebar-link {
+  padding: 11px 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.sidebar-link:hover { background: rgba(255,255,255,0.03); }
+.sidebar-link.active { border-left-color: var(--amber); background: rgba(255,255,255,0.04); }
+.sidebar-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.75; }
+.sidebar-link.active .sidebar-icon { opacity: 1; }
+
+/* ── HERO ── */
+.hero-v2 {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 32px;
+  align-items: center;
+  padding: 44px 0 36px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.hero-v2-eyebrow {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--amber);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.hero-v2-title {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  margin-bottom: 8px;
+}
+.hero-v2-tagline {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 24px;
+  max-width: 480px;
+}
+.hero-v2-meta-row {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.hero-v2-meta-item .command-strip-label { margin-bottom: 3px; }
+.hero-v2-stats-row {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.hero-v2-stat { min-width: 90px; }
+.hero-v2-illustration { justify-self: end; opacity: 0.9; }
+
+@media (max-width: 900px) {
+  .hero-v2 { grid-template-columns: 1fr; }
+  .hero-v2-illustration { display: none; }
+}
