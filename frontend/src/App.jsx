@@ -1,126 +1,82 @@
-﻿import { useEffect, useState } from 'react';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-
+﻿import { useState, useEffect } from 'react';
 import ExplainableAI from './ExplainableAI';
 import AIInterventionSimulator from './AIInterventionSimulator';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { api, getSampleReading, DELHI_STATIONS } from './api';
 import StationMap from './StationMap';
 import CommandStrip from './HeroSection';
-
-import { api, DELHI_STATIONS, getSampleReading } from './api';
 import './App.css';
 
 const CATEGORY_COLORS = {
-  Good: '#4ade80',
-  Satisfactory: '#a3d977',
-  Moderate: '#e8a33d',
-  Poor: '#e8743d',
-  'Very Poor': '#e04545',
-  Severe: '#a12842',
+  Good: '#4ade80', Satisfactory: '#a3d977', Moderate: '#e8a33d',
+  Poor: '#e8743d', 'Very Poor': '#e04545', Severe: '#a12842'
 };
 
 const SECTIONS = [
   { id: 'overview', label: 'Overview' },
   { id: 'forecast', label: 'Forecast' },
-  { id: 'attribution', label: 'Source Attribution' },
-  { id: 'enforcement', label: 'Enforcement' },
   { id: 'explainable-ai', label: 'Explainable AI' },
   { id: 'intervention-simulator', label: 'Simulator' },
+  { id: 'attribution', label: 'Source Attribution' },
+  { id: 'enforcement', label: 'Enforcement' },
   { id: 'advisory', label: 'Citizen Advisory' },
   { id: 'multicity', label: 'Multi-City' },
 ];
-
-function getPriorityUrgency(priority) {
-  if (priority === 'Immediate') {
-    return 'IMMEDIATE';
-  }
-
-  if (priority === 'Within 6 hours') {
-    return 'HIGH';
-  }
-
-  if (priority === 'Within 24 hours') {
-    return 'MEDIUM';
-  }
-
-  return 'LOW';
-}
 
 export default function App() {
   const [selectedStation, setSelectedStation] = useState('DL001');
   const [language, setLanguage] = useState('english');
   const [population, setPopulation] = useState('general');
-
   const [loading, setLoading] = useState(false);
-  const [trendLoading, setTrendLoading] = useState(false);
-
   const [result, setResult] = useState(null);
   const [cities, setCities] = useState([]);
   const [stationsAqi, setStationsAqi] = useState({});
-  const [trendData, setTrendData] = useState([]);
-
   const [error, setError] = useState(null);
+  const [trendData, setTrendData] = useState([]);
+  const [trendLoading, setTrendLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [stationsOverview, setStationsOverview] = useState([]);
+  const [selectedStationDetail, setSelectedStationDetail] = useState(null);
+  const [stationsUnavailable, setStationsUnavailable] = useState(false);
 
   useEffect(() => {
-    api
-      .get('/multicity/overview')
-      .then((response) => {
-        setCities(response.data?.cities ?? []);
-      })
-      .catch(() => {
-        setCities([]);
-      });
+    api.get('/multicity/overview').then(res => setCities(res.data.cities)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    api.get('/stations/overview')
+      .then(res => setStationsOverview(res.data.stations))
+      .catch(() => setStationsUnavailable(true));
+  }, []);
+
+  useEffect(() => {
+    api.get(`/stations/${selectedStation}`)
+      .then(res => setSelectedStationDetail(res.data))
+      .catch(() => setSelectedStationDetail(null));
+  }, [selectedStation]);
 
   const loadTrend = async (stationId) => {
     setTrendLoading(true);
-
     try {
-      const [historyResponse, forecastResponse] = await Promise.all([
+      const [historyRes, forecastRes] = await Promise.all([
         api.get(`/trend/history/${stationId}?hours=72`),
-        api.get(`/trend/forecast-curve/${stationId}`),
+        api.get(`/trend/forecast-curve/${stationId}`)
       ]);
-
-      const historyPoints = historyResponse.data?.points ?? [];
-      const forecastPoints = forecastResponse.data?.points ?? [];
-
-      const history = historyPoints.map((point) => ({
-        time: new Date(point.timestamp).toLocaleString('en-IN', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-        }),
-        actual: point.aqi,
-        forecast: null,
+      const history = historyRes.data.points.map(p => ({
+        time: new Date(p.timestamp).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit' }),
+        actual: p.aqi,
+        forecast: null
       }));
-
-      const forecast = forecastPoints.map((point, index) => ({
-        time: new Date(point.timestamp).toLocaleString('en-IN', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-        }),
-        actual:
-          index === 0 && history.length > 0
-            ? history[history.length - 1].actual
-            : null,
-        forecast: point.aqi,
+      const forecast = forecastRes.data.points.map((p, i) => ({
+        time: new Date(p.timestamp).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit' }),
+        actual: i === 0 && history.length ? history[history.length - 1].actual : null,
+        forecast: p.aqi
       }));
-
       setTrendData([...history, ...forecast]);
-    } catch {
+    } catch (err) {
       setTrendData([]);
-    } finally {
-      setTrendLoading(false);
     }
+    setTrendLoading(false);
   };
 
   useEffect(() => {
@@ -130,828 +86,263 @@ export default function App() {
   const runPipeline = async () => {
     setLoading(true);
     setError(null);
-
     try {
       const reading = getSampleReading(selectedStation);
-
-      const payload = {
-        ...reading,
-        language,
-        population_type: population,
-        available_inspectors: 3,
-      };
-
-      const response = await api.post('/pipeline/analyze', payload);
-      const pipelineResult = response.data;
-
-      setResult(pipelineResult);
-
-      const predictedAqi = pipelineResult?.forecast?.predicted_aqi;
-
-      if (Number.isFinite(predictedAqi)) {
-        setStationsAqi((previous) => ({
-          ...previous,
-          [selectedStation]: predictedAqi,
-        }));
-      }
-    } catch {
-      setError(
-        'Could not reach the backend. Make sure Uvicorn is running on port 8000.',
-      );
-    } finally {
-      setLoading(false);
+      const payload = { ...reading, language, population_type: population, available_inspectors: 3 };
+      const res = await api.post('/pipeline/analyze', payload);
+      setResult(res.data);
+      setStationsAqi(prev => ({ ...prev, [selectedStation]: res.data.forecast.predicted_aqi }));
+    } catch (err) {
+      setError('Could not reach backend. Make sure uvicorn is running on port 8000.');
     }
+    setLoading(false);
   };
 
   const scrollTo = (id) => {
     setActiveSection(id);
-
-    document.getElementById(id)?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    });
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const forecast = result?.forecast;
-  const attribution = result?.attribution;
-  const enforcement = result?.enforcement;
-  const advisory = result?.advisory;
-
-  const attributionEvidence = attribution?.evidence ?? [];
-  const enforcementActions = enforcement?.actions ?? [];
-
-  const generalPublicAdvice = advisory?.general_public ?? [];
-  const sensitiveGroupAdvice = advisory?.sensitive_groups ?? [];
-  const schoolAdvice = advisory?.schools ?? [];
-  const outdoorWorkerAdvice = advisory?.outdoor_workers ?? [];
-
-  const currentStationAqi = stationsAqi[selectedStation];
+  const priorityToUrgencyClass = (priority) => {
+    if (priority === 'Immediate') return 'IMMEDIATE';
+    if (priority === 'Within 6 hours') return 'HIGH';
+    if (priority === 'Within 24 hours') return 'MEDIUM';
+    return 'LOW';
+  };
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      <div className="sidebar">
         <div className="sidebar-brand">SmartCity AQI</div>
-
-        {SECTIONS.map((section) => (
-          <button
-            key={section.id}
-            type="button"
-            className={`sidebar-link ${
-              activeSection === section.id ? 'active' : ''
-            }`}
-            onClick={() => scrollTo(section.id)}
-          >
-            {section.label}
-          </button>
+        {SECTIONS.map(s => (
+          <a key={s.id} className={`sidebar-link ${activeSection === s.id ? 'active' : ''}`} onClick={() => scrollTo(s.id)}>
+            {s.label}
+          </a>
         ))}
-      </aside>
+      </div>
 
-      <main className="main">
-        <section id="overview">
-          <CommandStrip
-            result={result}
-            cities={cities}
-            loading={loading}
-          />
-        </section>
+      <div className="main">
+        <div id="overview">
+          <CommandStrip result={result} cities={cities} loading={loading} />
+        </div>
 
         <div className="control-bar">
           <div className="control-field">
-            <label htmlFor="station-select">Station</label>
-
-            <select
-              id="station-select"
-              value={selectedStation}
-              onChange={(event) => setSelectedStation(event.target.value)}
-            >
-              {DELHI_STATIONS.map((station) => (
-                <option key={station} value={station}>
-                  {station}
-                </option>
-              ))}
+            <label>Station</label>
+            <select value={selectedStation} onChange={e => setSelectedStation(e.target.value)}>
+              {DELHI_STATIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-
           <div className="control-field">
-            <label htmlFor="language-select">Advisory Language</label>
-
-            <select
-              id="language-select"
-              value={language}
-              onChange={(event) => setLanguage(event.target.value)}
-            >
+            <label>Advisory Language</label>
+            <select value={language} onChange={e => setLanguage(e.target.value)}>
               <option value="english">English</option>
               <option value="hindi">Hindi</option>
               <option value="kannada">Kannada</option>
               <option value="tamil">Tamil</option>
             </select>
           </div>
-
           <div className="control-field">
-            <label htmlFor="population-select">Target Population</label>
-
-            <select
-              id="population-select"
-              value={population}
-              onChange={(event) => setPopulation(event.target.value)}
-            >
+            <label>Target Population</label>
+            <select value={population} onChange={e => setPopulation(e.target.value)}>
               <option value="general">General Public</option>
               <option value="elderly">Elderly</option>
               <option value="children">Children</option>
               <option value="outdoor_workers">Outdoor Workers</option>
             </select>
           </div>
-
-          <button
-            type="button"
-            className="run-btn"
-            onClick={runPipeline}
-            disabled={loading}
-          >
-            {loading ? 'Analyzing...' : 'Run Intelligence Pipeline'}
+          <button className="run-btn" onClick={runPipeline} disabled={loading}>
+            {loading ? 'Analyzing' : 'Run Intelligence Pipeline'}
           </button>
         </div>
 
-        {error && (
-          <div
-            className="card"
-            style={{
-              borderColor: '#e04545',
-              color: '#e04545',
-              marginBottom: 24,
-            }}
-          >
-            {error}
-          </div>
-        )}
+        {error && <div className="card" style={{borderColor: '#e04545', color: '#e04545', marginBottom: 24}}>{error}</div>}
 
-        <section id="forecast">
+        <div id="forecast">
           <div className="page-title">Forecast Intelligence</div>
-
-          <div className="page-subtitle">
-            Station {selectedStation}, 72-hour history and 72-hour projection
-          </div>
-
-          <div className="card" style={{ marginBottom: 24 }}>
+          <div className="page-subtitle">Station {selectedStation}, 72 hour history and 72 hour projection</div>
+          <div className="card" style={{marginBottom: 24}}>
             <div className="chart-header">
               <div className="chart-legend">
-                <span>
-                  <span
-                    className="legend-dot"
-                    style={{ background: '#8b92a8' }}
-                  />
-                  Actual (past)
-                </span>
-
-                <span>
-                  <span
-                    className="legend-dot"
-                    style={{ background: '#e8a33d' }}
-                  />
-                  Forecast (next 72h)
-                </span>
+                <span><span className="legend-dot" style={{background: '#8b92a8'}}></span>Actual (past)</span>
+                <span><span className="legend-dot" style={{background: '#e8a33d'}}></span>Forecast (next 72h)</span>
               </div>
             </div>
-
             {trendLoading ? (
-              <div className="loading">Loading history and forecast...</div>
-            ) : trendData.length === 0 ? (
-              <div className="loading">
-                Forecast history is currently unavailable.
-              </div>
+              <div className="loading">Loading history and forecast</div>
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={trendData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#2d3448"
-                  />
-
-                  <XAxis
-                    dataKey="time"
-                    stroke="#8b92a8"
-                    fontSize={10}
-                    interval={23}
-                  />
-
-                  <YAxis
-                    stroke="#8b92a8"
-                    fontSize={11}
-                  />
-
-                  <Tooltip
-                    contentStyle={{
-                      background: '#1a1f2e',
-                      border: '1px solid #2d3448',
-                      fontFamily: 'IBM Plex Mono',
-                      fontSize: 12,
-                      color: '#f3f4f6',
-                    }}
-                    labelStyle={{ color: '#f3f4f6' }}
-                    itemStyle={{ color: '#c5cbd6' }}
-                  />
-
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="#8b92a8"
-                    strokeWidth={2}
-                    dot={false}
-                    name="Actual"
-                  />
-
-                  <Line
-                    type="monotone"
-                    dataKey="forecast"
-                    stroke="#e8a33d"
-                    strokeWidth={2}
-                    strokeDasharray="5 3"
-                    dot={false}
-                    name="Forecast"
-                  />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2d3448" />
+                  <XAxis dataKey="time" stroke="#8b92a8" fontSize={10} interval={23} />
+                  <YAxis stroke="#8b92a8" fontSize={11} />
+                  <Tooltip contentStyle={{ background: '#1a1f2e', border: '1px solid #2d3448', fontFamily: 'IBM Plex Mono', fontSize: 12, color: '#f3f4f6' }} labelStyle={{ color: '#f3f4f6' }} itemStyle={{ color: '#c5cbd6' }} />
+                  <Line type="monotone" dataKey="actual" stroke="#8b92a8" strokeWidth={2} dot={false} name="Actual" />
+                  <Line type="monotone" dataKey="forecast" stroke="#e8a33d" strokeWidth={2} strokeDasharray="5 3" dot={false} name="Forecast" />
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
-        </section>
+        </div>
 
-        <section id="explainable-ai">
-          <ExplainableAI result={result} />
-        </section>
+        <ExplainableAI result={result} />
 
-        <section id="intervention-simulator">
-          <AIInterventionSimulator
-            stationId={selectedStation}
-            currentAqi={forecast?.predicted_aqi}
-            forecastAqi={forecast?.predicted_aqi}
-            currentCategory={forecast?.category}
-          />
-        </section>
+        <AIInterventionSimulator
+          currentAqi={result?.forecast?.predicted_aqi}
+          currentCategory={result?.forecast?.category}
+        />
 
         {result && (
           <>
-            <section>
-              <div className="page-title">Intelligence Pipeline</div>
+            <div className="page-title">Intelligence Pipeline</div>
+            <div className="page-subtitle">Signal to intervention in {result.pipeline_summary.total_response_time_ms}ms across 4 chained agents</div>
 
-              <div className="page-subtitle">
-                Signal to intervention in{' '}
-                {result.pipeline_summary?.total_response_time_ms ?? '—'}ms
-                across four chained agents
+            <div className="workflow">
+              <div className="workflow-stage">
+                <div className="stage-num">01 Forecast</div>
+                <div className="stage-title">Predicted AQI</div>
+                <div className="stage-result" style={{color: CATEGORY_COLORS[result.forecast.category]}}>{result.forecast.predicted_aqi}</div>
+                <div className="stage-detail">{result.forecast.category}</div>
+                <div className="stage-timing">R2 {result.forecast.model_r2} · {result.step_timings[0].time_ms}ms</div>
               </div>
-
-              <div className="workflow">
-                <div className="workflow-stage">
-                  <div className="stage-num">01 Forecast</div>
-                  <div className="stage-title">Predicted AQI</div>
-
-                  <div
-                    className="stage-result"
-                    style={{
-                      color:
-                        CATEGORY_COLORS[forecast?.category] ??
-                        'var(--text)',
-                    }}
-                  >
-                    {forecast?.predicted_aqi ?? '—'}
-                  </div>
-
-                  <div className="stage-detail">
-                    {forecast?.category ?? 'Unavailable'}
-                  </div>
-
-                  <div className="stage-timing">
-                    R² {forecast?.model_r2 ?? '—'} ·{' '}
-                    {result.step_timings?.[0]?.time_ms ?? '—'}ms
-                  </div>
-                </div>
-
-                <div className="workflow-stage">
-                  <div className="stage-num">02 Attribution</div>
-                  <div className="stage-title">Primary Source</div>
-
-                  <div
-                    className="stage-result"
-                    style={{ fontSize: 18 }}
-                  >
-                    {attribution?.primary_source ?? 'Unavailable'}
-                  </div>
-
-                  <div className="stage-detail">
-                    {attribution?.confidence ?? '—'} confidence
-                  </div>
-
-                  <div className="stage-timing">
-                    {result.step_timings?.[1]?.time_ms ?? '—'}ms
-                  </div>
-                </div>
-
-                <div className="workflow-stage">
-                  <div className="stage-num">03 Enforcement</div>
-                  <div className="stage-title">Urgency</div>
-
-                  <span
-                    className={`urgency-badge urgency-${
-                      enforcement?.urgency ?? 'LOW'
-                    }`}
-                  >
-                    {enforcement?.urgency ?? 'LOW'}
-                  </span>
-
-                  <div className="stage-detail">
-                    Score {enforcement?.enforcement_score ?? '—'}/100
-                  </div>
-
-                  <div className="stage-timing">
-                    {result.step_timings?.[2]?.time_ms ?? '—'}ms
-                  </div>
-                </div>
-
-                <div className="workflow-stage">
-                  <div className="stage-num">04 Advisory</div>
-
-                  <div className="stage-title">
-                    {language}, {population.replaceAll('_', ' ')}
-                  </div>
-
-                  <div
-                    className="stage-detail"
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--text)',
-                    }}
-                  >
-                    {advisory?.summary ??
-                      advisory?.headline ??
-                      'Guidance unavailable'}
-                  </div>
-
-                  <div className="stage-timing">
-                    {result.step_timings?.[3]?.time_ms ?? '—'}ms
-                  </div>
-                </div>
+              <div className="workflow-stage">
+                <div className="stage-num">02 Attribution</div>
+                <div className="stage-title">Primary Source</div>
+                <div className="stage-result" style={{fontSize: 18}}>{result.attribution.primary_source}</div>
+                <div className="stage-detail">{result.attribution.confidence} confidence</div>
+                <div className="stage-timing">{result.step_timings[1].time_ms}ms</div>
               </div>
-            </section>
-
-            <section id="attribution">
-              <div className="page-title">
-                Pollution Source Analysis & Field Response Plan
+              <div className="workflow-stage">
+                <div className="stage-num">03 Enforcement</div>
+                <div className="stage-title">Severity</div>
+                <div className="stage-result" style={{fontSize: 18, textTransform: 'capitalize'}}>{result.enforcement.severity}</div>
+                <div className="stage-detail">{result.enforcement.actions.length} actions recommended</div>
+                <div className="stage-timing">{result.step_timings[2].time_ms}ms</div>
               </div>
-
-              <div className="page-subtitle">
-                Sensor-based source evidence and operational response
-                recommendations
+              <div className="workflow-stage">
+                <div className="stage-num">04 Advisory</div>
+                <div className="stage-title">{language}, {population.replace('_',' ')}</div>
+                <div className="stage-detail" style={{fontSize: 13, color: 'var(--text)'}}>{result.advisory.headline}</div>
+                <div className="stage-timing">{result.step_timings[3].time_ms}ms</div>
               </div>
+            </div>
 
-              <div className="split-row">
+            <div id="attribution">
+              <div className="page-title">Pollution Source Analysis & Field Response Plan</div>
+              <div className="split-row" id="enforcement">
                 <div className="card">
-                  <div className="command-strip-label">
-                    Primary pollution source
+                  <h3 style={{fontSize: 14, marginBottom: 4}}>{result.attribution.primary_source}</h3>
+                  <div className="confidence-bar-track">
+                    <div className="confidence-bar-fill" style={{width: result.attribution.confidence}}></div>
                   </div>
-
-                  <div
-                    className="command-strip-value"
-                    style={{ fontSize: 20, marginBottom: 6 }}
-                  >
-                    {attribution?.primary_source ?? 'Unavailable'}
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--text-dim)',
-                      marginBottom: 16,
-                    }}
-                  >
-                    Attribution confidence:{' '}
-                    {attribution?.confidence ?? 'Unavailable'}
-                  </div>
-
-                  {attributionEvidence.length > 0 ? (
-                    attributionEvidence.map((evidence, index) => (
-                      <div
-                        key={`${evidence.statement}-${index}`}
-                        style={{
-                          marginBottom: 10,
-                          paddingBottom: 10,
-                          borderBottom:
-                            index < attributionEvidence.length - 1
-                              ? '1px solid var(--border)'
-                              : 'none',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 13,
-                            color: 'var(--text)',
-                            marginBottom: 4,
-                          }}
-                        >
-                          {evidence.statement}
-                        </div>
-
-                        <div className="evidence-meta">
-                          {evidence.type ?? 'Evidence'}
-                          {evidence.strength
-                            ? ` · ${evidence.strength}`
-                            : ''}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--text-dim)',
-                      }}
-                    >
-                      No structured attribution evidence is available for
-                      this run.
+                  <div style={{fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text-dim)', marginBottom: 12}}>{result.attribution.confidence} confidence</div>
+                  {result.attribution.all_sources.map((s,i) => (
+                    <div className="source-row" key={i}>
+                      <span>{s.source}</span>
+                      <span style={{color: 'var(--amber)'}}>{s.confidence}%</span>
                     </div>
-                  )}
+                  ))}
                 </div>
-
-                <div className="card" id="enforcement">
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--text-dim)',
-                      marginBottom: 14,
-                    }}
-                  >
-                    {enforcement?.summary ??
-                      'No field response summary is available.'}
-                  </div>
-
-                  {enforcementActions.length > 0 ? (
-                    enforcementActions.map((action) => (
-                      <div
-                        key={action.id ?? action.title}
-                        style={{
-                          marginBottom: 12,
-                          paddingBottom: 12,
-                          borderBottom: '1px solid var(--border)',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            gap: 12,
-                          }}
-                        >
-                          <span
-                            style={{
-                              fontWeight: 600,
-                              fontSize: 13,
-                            }}
-                          >
-                            {action.title}
-                          </span>
-
-                          <span
-                            className={`urgency-badge urgency-${getPriorityUrgency(
-                              action.priority,
-                            )}`}
-                          >
-                            {action.priority}
-                          </span>
-                        </div>
-
-                        {action.reason && (
-                          <div
-                            style={{
-                              marginTop: 6,
-                              fontSize: 12,
-                              color: 'var(--text-dim)',
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {action.reason}
-                          </div>
-                        )}
-
-                        {action.owner && (
-                          <div
-                            className="evidence-meta"
-                            style={{ marginTop: 6 }}
-                          >
-                            Owner: {action.owner}
-                          </div>
-                        )}
-
-                        {action.expected_effect && (
-                          <div
-                            className="evidence-meta"
-                            style={{ marginTop: 3 }}
-                          >
-                            Expected effect: {action.expected_effect}
-                          </div>
-                        )}
+                <div className="card">
+                  <div style={{fontSize: 13, color: 'var(--text-dim)', marginBottom: 8}}>{result.enforcement.summary}</div>
+                  {result.enforcement.actions.map((a) => (
+                    <div key={a.id} style={{marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid var(--border)'}}>
+                      <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                        <span style={{fontWeight: 600, fontSize: 13}}>{a.title}</span>
+                        <span className={`urgency-badge urgency-${priorityToUrgencyClass(a.priority)}`}>{a.priority}</span>
                       </div>
-                    ))
-                  ) : (
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--text-dim)',
-                      }}
-                    >
-                      No field actions were generated for this run.
+                      <div className="evidence-meta" style={{marginTop: 4}}>Owner: {a.owner}</div>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
-            </section>
+            </div>
 
-            <section id="advisory">
-              <div className="page-title">
-                Public Health Guidance
-              </div>
-
-              <div className="card" style={{ marginBottom: 24 }}>
+            <div id="advisory">
+              <div className="page-title">Public Health Guidance</div>
+              <div className="card" style={{marginBottom: 24}}>
                 <div className="advisory-tags">
-                  <span className="advisory-tag">
-                    {advisory?.risk_level ?? forecast?.category ?? 'Unknown'}{' '}
-                    risk
-                  </span>
-
+                  <span className="advisory-tag">{result.advisory.risk_level} risk</span>
                   <span className="advisory-tag">{language}</span>
-
-                  <span className="advisory-tag">
-                    {population.replaceAll('_', ' ')}
-                  </span>
                 </div>
-
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: 'var(--text-dim)',
-                    marginBottom: 16,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {advisory?.summary ??
-                    advisory?.health_advice ??
-                    advisory?.headline ??
-                    'Public-health guidance is unavailable for this run.'}
-                </p>
-
-                {generalPublicAdvice.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div
-                      className="evidence-factor"
-                      style={{ marginBottom: 6 }}
-                    >
-                      General public
-                    </div>
-
-                    <ul className="action-list">
-                      {generalPublicAdvice.map((action, index) => (
-                        <li key={index}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {sensitiveGroupAdvice.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div
-                      className="evidence-factor"
-                      style={{ marginBottom: 6 }}
-                    >
-                      Sensitive groups
-                    </div>
-
-                    <ul className="action-list">
-                      {sensitiveGroupAdvice.map((action, index) => (
-                        <li key={index}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {schoolAdvice.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div
-                      className="evidence-factor"
-                      style={{ marginBottom: 6 }}
-                    >
-                      Schools
-                    </div>
-
-                    <ul className="action-list">
-                      {schoolAdvice.map((action, index) => (
-                        <li key={index}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {outdoorWorkerAdvice.length > 0 && (
-                  <div style={{ marginBottom: 16 }}>
-                    <div
-                      className="evidence-factor"
-                      style={{ marginBottom: 6 }}
-                    >
-                      Outdoor workers
-                    </div>
-
-                    <ul className="action-list">
-                      {outdoorWorkerAdvice.map((action, index) => (
-                        <li key={index}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {advisory?.recommended_window && (
-                  <div style={{ marginTop: 16 }}>
-                    <div
-                      className="evidence-factor"
-                      style={{ marginBottom: 8 }}
-                    >
-                      Activity windows
-                    </div>
-
-                    {advisory.recommended_window
-                      .avoid_outdoor_activity && (
-                      <div className="feasibility-row">
-                        <span>Avoid outdoor activity</span>
-                        <span>
-                          {
-                            advisory.recommended_window
-                              .avoid_outdoor_activity
-                          }
-                        </span>
-                      </div>
-                    )}
-
-                    {advisory.recommended_window.safer_window && (
-                      <div className="feasibility-row">
-                        <span>Safer window</span>
-                        <span>
-                          {advisory.recommended_window.safer_window}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {generalPublicAdvice.length === 0 &&
-                  sensitiveGroupAdvice.length === 0 &&
-                  schoolAdvice.length === 0 &&
-                  outdoorWorkerAdvice.length === 0 &&
-                  advisory?.recommended_actions?.length > 0 && (
-                    <ul className="action-list">
-                      {advisory.recommended_actions.map(
-                        (action, index) => (
-                          <li key={index}>{action}</li>
-                        ),
-                      )}
-                    </ul>
-                  )}
+                <p style={{fontSize: 13, color: 'var(--text-dim)', marginBottom: 14}}>{result.advisory.summary}</p>
+                <div style={{marginBottom: 12}}>
+                  <div className="evidence-factor" style={{marginBottom: 4}}>General public</div>
+                  <ul className="action-list">{result.advisory.general_public.map((a,i) => <li key={i}>{a}</li>)}</ul>
+                </div>
+                <div style={{marginBottom: 12}}>
+                  <div className="evidence-factor" style={{marginBottom: 4}}>Sensitive groups</div>
+                  <ul className="action-list">{result.advisory.sensitive_groups.map((a,i) => <li key={i}>{a}</li>)}</ul>
+                </div>
+                <div style={{marginBottom: 12}}>
+                  <div className="evidence-factor" style={{marginBottom: 4}}>Schools</div>
+                  <ul className="action-list">{result.advisory.schools.map((a,i) => <li key={i}>{a}</li>)}</ul>
+                </div>
+                <div>
+                  <div className="evidence-factor" style={{marginBottom: 4}}>Outdoor workers</div>
+                  <ul className="action-list">{result.advisory.outdoor_workers.map((a,i) => <li key={i}>{a}</li>)}</ul>
+                </div>
               </div>
-            </section>
+            </div>
           </>
         )}
 
-        <section>
-          <div className="page-title">Station Operations Map</div>
-
-          <div className="page-subtitle">
-            Select a station for details. This also updates the
-            forecast above.
+        <div className="page-title">Station Operations Map</div>
+        <div className="page-subtitle">Dataset latest observations, select a station for details</div>
+        {stationsUnavailable && <div className="evidence-meta" style={{marginBottom: 8}}>Station data temporarily unavailable</div>}
+        <div className="split-row-map" style={{marginBottom: 24}}>
+          <div className="card" style={{padding: 0}}>
+            <StationMap stations={stationsOverview} selectedStation={selectedStation} onSelectStation={setSelectedStation} />
           </div>
-
-          <div
-            className="split-row-map"
-            style={{ marginBottom: 24 }}
-          >
-            <div className="card" style={{ padding: 0 }}>
-              <StationMap
-                stationsData={stationsAqi}
-                onSelectStation={setSelectedStation}
-                selectedStation={selectedStation}
-              />
-            </div>
-
-            <div className="card station-detail-panel">
-              <div className="command-strip-label">
-                Selected Station
-              </div>
-
-              <div
-                className="command-strip-value"
-                style={{ fontSize: 20, marginBottom: 10 }}
-              >
-                {selectedStation}
-              </div>
-
-              <div className="feasibility-row">
-                <span>Current AQI</span>
-                <span>
-                  {Number.isFinite(currentStationAqi)
-                    ? Math.round(currentStationAqi)
-                    : '—'}
-                </span>
-              </div>
-
-              <div className="feasibility-row">
-                <span>Category</span>
-                <span>{forecast?.category ?? '—'}</span>
-              </div>
-
-              <div
-                className="map-legend"
-                style={{
-                  marginTop: 16,
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                <span>
-                  <span
-                    className="map-legend-dot"
-                    style={{ background: '#00e400' }}
-                  />
-                  Good
-                </span>
-
-                <span>
-                  <span
-                    className="map-legend-dot"
-                    style={{ background: '#ffff00' }}
-                  />
-                  Moderate
-                </span>
-
-                <span>
-                  <span
-                    className="map-legend-dot"
-                    style={{ background: '#ff7e00' }}
-                  />
-                  Poor
-                </span>
-
-                <span>
-                  <span
-                    className="map-legend-dot"
-                    style={{ background: '#7e0023' }}
-                  />
-                  Severe
-                </span>
-              </div>
+          <div className="card station-detail-panel">
+            <div className="command-strip-label">Selected Station</div>
+            <div className="command-strip-value" style={{fontSize: 20, marginBottom: 2}}>{selectedStation}</div>
+            {selectedStationDetail?.name && <div className="evidence-meta" style={{marginBottom: 10}}>{selectedStationDetail.name}</div>}
+            {selectedStationDetail?.current ? (
+              <>
+                <div className="feasibility-row"><span>Current AQI</span><span>{Math.round(selectedStationDetail.current.aqi)}</span></div>
+                <div className="feasibility-row"><span>Category</span><span>{selectedStationDetail.current.category}</span></div>
+                <div className="feasibility-row"><span>Data type</span><span>Dataset latest</span></div>
+                <div className="feasibility-row"><span>Trend</span><span>{selectedStationDetail.trend ?? '—'}</span></div>
+                {result && result.station_id === selectedStation && (
+                  <div className="feasibility-row"><span>Forecast AQI</span><span>{Math.round(result.forecast.predicted_aqi)}</span></div>
+                )}
+              </>
+            ) : <div className="evidence-meta">Station detail unavailable</div>}
+            <div className="map-legend" style={{marginTop: 16, flexDirection: 'column', gap: 8}}>
+              <span><span className="map-legend-dot" style={{background: '#00e400'}}></span>Good</span>
+              <span><span className="map-legend-dot" style={{background: '#ffff00'}}></span>Moderate</span>
+              <span><span className="map-legend-dot" style={{background: '#ff7e00'}}></span>Poor</span>
+              <span><span className="map-legend-dot" style={{background: '#7e0023'}}></span>Severe</span>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section id="multicity">
+        <div id="multicity">
           <div className="page-title">Regional Comparison</div>
-
+          <div className="evidence-meta" style={{marginBottom: 8}}>CPCB National Air Quality Reports, average AQI (2024)</div>
           <div className="card">
             <table className="compare-table">
               <thead>
-                <tr>
-                  <th>City</th>
-                  <th>AQI</th>
-                  <th>Category</th>
-                  <th>Poor Days/Yr</th>
-                </tr>
+                <tr><th>Rank</th><th>City</th><th>Average AQI (2024)</th><th>Category</th><th>Poor Days/Yr</th></tr>
               </thead>
-
               <tbody>
-                {cities.length > 0 ? (
-                  cities.map((city) => (
-                    <tr key={city.city}>
-                      <td>{city.city}</td>
-
-                      <td
-                        style={{
-                          color:
-                            CATEGORY_COLORS[city.category] ??
-                            'var(--text)',
-                        }}
-                      >
-                        {city.avg_aqi_2024}
-                      </td>
-
-                      <td>{city.category}</td>
-                      <td>{city.days_poor_or_worse}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="4">
-                      Regional comparison data is unavailable.
-                    </td>
+                {cities.length === 0 ? (
+                  <tr><td colSpan={5} className="evidence-meta">No regional data available</td></tr>
+                ) : cities.map((c, i) => (
+                  <tr key={i}>
+                    <td>{c.rank ?? i + 1}</td>
+                    <td>{c.city}</td>
+                    <td style={{color: CATEGORY_COLORS[c.category]}}>{c.avg_aqi_2024}</td>
+                    <td>{c.category}</td>
+                    <td>{c.days_poor_or_worse}</td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
   );
 }

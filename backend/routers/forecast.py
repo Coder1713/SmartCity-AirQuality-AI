@@ -1,27 +1,22 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import pickle
 import pandas as pd
-import numpy as np
 from datetime import datetime
+from backend.shared import get_model_and_features, get_aqi_category, CATEGORY_COLORS
 
 router = APIRouter()
 
-# Load model and feature list once when server starts
 try:
-    with open("ml/aqi_forecast_model.pkl", "rb") as f:
-        model = pickle.load(f)
-    with open("ml/feature_columns.pkl", "rb") as f:
-        FEATURES = pickle.load(f)
+    model, FEATURES = get_model_and_features()
     print("✓ Forecasting model loaded")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
     model = None
     FEATURES = []
+
 def is_model_loaded():
     return model is not None and FEATURES is not None and len(FEATURES) > 0
 
-# ── INPUT SCHEMA ─────────────────────────────────────────────
 class ForecastInput(BaseModel):
     station_id: str = "DL001"
     pm25: float
@@ -33,29 +28,25 @@ class ForecastInput(BaseModel):
     co: float
     so2: float
     o3: float
-    aqi_lag1: float   # AQI 1 hour ago
-    aqi_lag3: float   # AQI 3 hours ago
-    aqi_lag6: float   # AQI 6 hours ago
-    aqi_lag24: float  # AQI 24 hours ago
-    aqi_roll6: float  # 6 hour rolling average
-    aqi_roll24: float # 24 hour rolling average
+    aqi_lag1: float
+    aqi_lag3: float
+    aqi_lag6: float
+    aqi_lag24: float
+    aqi_roll6: float
+    aqi_roll24: float
 
-# ── AQI CATEGORY HELPER ──────────────────────────────────────
-def get_aqi_category(aqi: float) -> dict:
-    if aqi <= 50:
-        return {"category": "Good", "color": "#00e400", "health_impact": "Minimal impact"}
-    elif aqi <= 100:
-        return {"category": "Satisfactory", "color": "#92d050", "health_impact": "Minor breathing discomfort to sensitive people"}
-    elif aqi <= 200:
-        return {"category": "Moderate", "color": "#ffff00", "health_impact": "Breathing discomfort to people with lung/heart disease"}
-    elif aqi <= 300:
-        return {"category": "Poor", "color": "#ff7e00", "health_impact": "Breathing discomfort to most people on prolonged exposure"}
-    elif aqi <= 400:
-        return {"category": "Very Poor", "color": "#ff0000", "health_impact": "Respiratory illness on prolonged exposure"}
-    else:
-        return {"category": "Severe", "color": "#7e0023", "health_impact": "Health impact even on light activity. Serious risk"}
+def _category_info(aqi: float) -> dict:
+    category = get_aqi_category(aqi)
+    impacts = {
+        "Good": "Minimal impact",
+        "Satisfactory": "Minor breathing discomfort to sensitive people",
+        "Moderate": "Breathing discomfort to people with lung/heart disease",
+        "Poor": "Breathing discomfort to most people on prolonged exposure",
+        "Very Poor": "Respiratory illness on prolonged exposure",
+        "Severe": "Health impact even on light activity. Serious risk"
+    }
+    return {"category": category, "color": CATEGORY_COLORS[category], "health_impact": impacts[category]}
 
-# ── FORECAST ENDPOINT ────────────────────────────────────────
 @router.post("/predict")
 def predict_aqi(data: ForecastInput):
     if model is None:
@@ -88,7 +79,7 @@ def predict_aqi(data: ForecastInput):
 
     predicted_aqi = float(model.predict(input_df[FEATURES])[0])
     predicted_aqi = round(max(0, predicted_aqi), 2)
-    category_info = get_aqi_category(predicted_aqi)
+    category_info = _category_info(predicted_aqi)
 
     return {
         "station_id":    data.station_id,
@@ -104,7 +95,6 @@ def predict_aqi(data: ForecastInput):
         }
     }
 
-# ── SAMPLE DATA ENDPOINT (for frontend testing) ──────────────
 @router.get("/sample-stations")
 def get_sample_stations():
     df = pd.read_csv("datasets/processed/delhi_aqi_clean.csv")
@@ -112,11 +102,11 @@ def get_sample_stations():
     stations = []
     for _, row in latest.iterrows():
         aqi = float(row['AQI']) if not pd.isna(row['AQI']) else 150.0
-        cat = get_aqi_category(aqi)
+        info = _category_info(aqi)
         stations.append({
             "station_id": row['StationId'],
             "aqi":        round(aqi, 1),
-            "category":   cat["category"],
-            "color":      cat["color"]
+            "category":   info["category"],
+            "color":      info["color"]
         })
     return {"stations": stations, "total": len(stations)}

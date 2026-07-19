@@ -1,21 +1,19 @@
 from fastapi import APIRouter
-from backend.decision_engine import build_decision_context, generate_field_response_plan, generate_health_guidance
-from backend.explain_utils import generate_forecast_drivers
 from pydantic import BaseModel
 import time
-import pickle
 import pandas as pd
 from datetime import datetime
+from backend.shared import get_model_and_features, get_aqi_category
+from backend.decision_engine import build_decision_context, generate_field_response_plan, generate_health_guidance
+from backend.explain_utils import generate_forecast_drivers
 from backend.routers.advisory import ADVISORY_TRANSLATIONS
 
 router = APIRouter()
 
 try:
-    with open("ml/aqi_forecast_model.pkl", "rb") as f:
-        model = pickle.load(f)
-    with open("ml/feature_columns.pkl", "rb") as f:
-        FEATURES = pickle.load(f)
-except:
+    model, FEATURES = get_model_and_features()
+except Exception as e:
+    print(f"Pipeline model load error: {e}")
     model = None
     FEATURES = []
 
@@ -39,14 +37,6 @@ class PipelineInput(BaseModel):
     language: str = "english"
     population_type: str = "general"
     available_inspectors: int = 3
-
-def get_aqi_category(aqi: float) -> str:
-    if aqi <= 50:    return "Good"
-    elif aqi <= 100: return "Satisfactory"
-    elif aqi <= 200: return "Moderate"
-    elif aqi <= 300: return "Poor"
-    elif aqi <= 400: return "Very Poor"
-    else:            return "Severe"
 
 POPULATION_ADDENDUM = {
     "elderly": {
@@ -204,8 +194,6 @@ def run_full_pipeline(data: PipelineInput):
         field_response = {"severity": "unavailable", "summary": "Field response unavailable for this run.", "actions": []}
     enforcement_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "3. Enforcement Agent", "time_ms": enforcement_time})
-    enforcement_time = round((time.time() - t0) * 1000, 2)
-    steps.append({"step": "3. Enforcement Agent", "time_ms": enforcement_time})
 
     t0 = time.time()
     advisory = get_advisory(predicted_aqi, data.population_type, data.language)
@@ -217,7 +205,6 @@ def run_full_pipeline(data: PipelineInput):
     advisory_time = round((time.time() - t0) * 1000, 2)
     steps.append({"step": "4. Citizen Advisory Agent", "time_ms": advisory_time})
 
-   
     total_time_ms = round((time.time() - pipeline_start) * 1000, 2)
 
     try:
@@ -233,7 +220,6 @@ def run_full_pipeline(data: PipelineInput):
         print(f"Explanation generation error: {e}")
         explanation = {"forecast_drivers": [], "model_metrics": {"r2": 0.9964, "rmse": 6.25}, "method": "unavailable", "scope": "unavailable"}
 
-    
     return {
         "station_id": data.station_id,
         "timestamp": now.isoformat(),

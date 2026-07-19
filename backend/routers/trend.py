@@ -1,16 +1,12 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
 import pandas as pd
-import pickle
 from datetime import datetime, timedelta
+from backend.shared import get_model_and_features
 
 router = APIRouter()
 
 try:
-    with open("ml/aqi_forecast_model.pkl", "rb") as f:
-        model = pickle.load(f)
-    with open("ml/feature_columns.pkl", "rb") as f:
-        FEATURES = pickle.load(f)
+    model, FEATURES = get_model_and_features()
 except Exception as e:
     print(f"Trend agent model load error: {e}")
     model = None
@@ -19,11 +15,10 @@ except Exception as e:
 HISTORY_DF = pd.read_csv("datasets/processed/station_history.csv")
 HISTORY_DF['Datetime'] = pd.to_datetime(HISTORY_DF['Datetime'])
 
-# Fill missing pollutant values with station-level median (same approach as training)
 POLLUTANT_COLS = ['PM2.5', 'PM10', 'NO', 'NO2', 'NOx', 'NH3', 'CO', 'SO2', 'O3']
 for col in POLLUTANT_COLS:
     HISTORY_DF[col] = HISTORY_DF.groupby('StationId')[col].transform(lambda x: x.fillna(x.median()))
-    HISTORY_DF[col] = HISTORY_DF[col].fillna(HISTORY_DF[col].median())  # fallback if entire station is NaN
+    HISTORY_DF[col] = HISTORY_DF[col].fillna(HISTORY_DF[col].median())
 
 HISTORY_DF['AQI'] = HISTORY_DF['AQI'].fillna(HISTORY_DF['AQI'].median())
 
@@ -45,7 +40,6 @@ def get_station_history(station_id: str, hours: int = 168):
 
 @router.get("/forecast-curve/{station_id}")
 def get_forecast_curve(station_id: str):
-    """24-72 hour forecast projection based on last known conditions"""
     if model is None:
         return {"error": "Model not loaded"}
 
@@ -59,7 +53,6 @@ def get_forecast_curve(station_id: str):
     points = []
     now = datetime.now()
 
-    # Generate 72 hourly forecast points using recent trend + model
     aqi_lag1 = float(recent_aqi[-1]) if len(recent_aqi) >= 1 else 150.0
     aqi_lag3 = float(recent_aqi[-3]) if len(recent_aqi) >= 3 else aqi_lag1
     aqi_lag6 = float(recent_aqi[-6]) if len(recent_aqi) >= 6 else aqi_lag1
@@ -83,13 +76,11 @@ def get_forecast_curve(station_id: str):
         }])
 
         raw_predicted = float(model.predict(input_df[FEATURES])[0])
-        # Blend model prediction with 24h rolling average to prevent autoregressive runaway drift
         predicted = (0.6 * raw_predicted) + (0.4 * roll24)
         predicted = max(0, round(predicted, 1))
 
         points.append({"timestamp": future_time.isoformat(), "aqi": predicted, "type": "forecast"})
 
-        # Roll forward the lag window using this prediction
         aqi_lag1 = predicted
         roll6 = (roll6 * 5 + predicted) / 6
         roll24 = (roll24 * 23 + predicted) / 24
