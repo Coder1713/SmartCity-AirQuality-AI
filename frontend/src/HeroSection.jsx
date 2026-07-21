@@ -1,27 +1,34 @@
-function CityIllustration() {
+function EnvironmentIllustration() {
   return (
-    <svg width="270" height="190" viewBox="0 0 270 190" fill="none" xmlns="http://www.w3.org/2000/svg" className="hero-v2-illustration">
-      <defs>
-        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#6d9eeb" stopOpacity="0.14" />
-          <stop offset="1" stopColor="#6d9eeb" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="haze2" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#e8a33d" stopOpacity="0.2" />
-          <stop offset="1" stopColor="#e8a33d" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <circle cx="216" cy="42" r="66" fill="url(#sky)" />
-      <rect x="0" y="128" width="270" height="62" fill="url(#haze2)" />
-      <rect x="18" y="86" width="24" height="94" rx="3" fill="#1e2330" />
-      <rect x="50" y="58" width="28" height="122" rx="3" fill="#181c27" />
-      <rect x="86" y="100" width="20" height="80" rx="3" fill="#1e2330" />
-      <rect x="114" y="42" width="30" height="138" rx="3" fill="#181c27" />
-      <rect x="152" y="74" width="22" height="106" rx="3" fill="#1e2330" />
-      <rect x="180" y="52" width="26" height="128" rx="3" fill="#181c27" />
-      <rect x="214" y="92" width="20" height="88" rx="3" fill="#1e2330" />
-      <circle cx="234" cy="36" r="18" fill="#e8a33d" opacity="0.28" />
-      <circle cx="234" cy="36" r="9" fill="#e8a33d" opacity="0.5" />
+    <svg width="380" height="300" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" style={{maxWidth: '100%'}}>
+      <ellipse cx="70" cy="60" rx="34" ry="16" fill="#fff" opacity="0.9" className="float-anim" />
+      <ellipse cx="100" cy="52" rx="24" ry="12" fill="#fff" opacity="0.9" className="float-anim" style={{animationDelay: '1s'}} />
+      <path className="drift-anim" d="M20 250 Q 60 235, 100 250 T 180 250 T 260 250 T 340 250" stroke="#3D6E97" strokeWidth="3" fill="none" opacity="0.5" strokeLinecap="round" />
+
+      <rect x="60" y="170" width="46" height="120" rx="6" fill="#3D6E97" opacity="0.92" />
+      <rect x="116" y="130" width="52" height="160" rx="6" fill="#1F2937" opacity="0.9" />
+      <rect x="178" y="190" width="38" height="100" rx="6" fill="#4C8F52" opacity="0.9" />
+      <rect x="226" y="110" width="56" height="180" rx="6" fill="#1F2937" opacity="0.95" />
+      <rect x="292" y="160" width="42" height="130" rx="6" fill="#F26B5E" opacity="0.92" />
+
+      <rect x="70" y="185" width="8" height="8" rx="2" fill="#FBF8F2" opacity="0.85" />
+      <rect x="86" y="185" width="8" height="8" rx="2" fill="#FBF8F2" opacity="0.85" />
+      <rect x="70" y="205" width="8" height="8" rx="2" fill="#FBF8F2" opacity="0.85" />
+      <rect x="86" y="205" width="8" height="8" rx="2" fill="#FBF8F2" opacity="0.85" />
+      <rect x="236" y="130" width="9" height="9" rx="2" fill="#FBF8F2" opacity="0.7" />
+      <rect x="254" y="130" width="9" height="9" rx="2" fill="#FBF8F2" opacity="0.7" />
+      <rect x="236" y="152" width="9" height="9" rx="2" fill="#FBF8F2" opacity="0.7" />
+      <rect x="254" y="152" width="9" height="9" rx="2" fill="#FBF8F2" opacity="0.7" />
+
+      <circle cx="30" cy="270" r="20" fill="#4C8F52" />
+      <rect x="26" y="285" width="8" height="20" fill="#7a5c3c" />
+      <circle cx="355" cy="280" r="16" fill="#4C8F52" />
+      <rect x="351" y="292" width="6" height="16" fill="#7a5c3c" />
+
+      <circle cx="200" cy="60" r="10" fill="#F26B5E" />
+      <line x1="200" y1="70" x2="200" y2="100" stroke="#F26B5E" strokeWidth="3" />
+      <circle cx="200" cy="60" r="18" stroke="#F26B5E" strokeWidth="2" opacity="0.5" fill="none" className="pulse-anim" />
+      <circle cx="200" cy="60" r="26" stroke="#F26B5E" strokeWidth="1.5" opacity="0.3" fill="none" />
     </svg>
   );
 }
@@ -33,10 +40,20 @@ export default function CommandStrip({ result, cities, loading }) {
 
   return (
     <div className="hero-v2">
+      <div className="hero-bg-shape-1"></div>
+      <div className="hero-bg-shape-2"></div>
+      <div className="hero-bg-shape-3"></div>
+      <div className="hero-bg-dots"></div>
+      <svg className="hero-bg-airflow" viewBox="0 0 800 400" preserveAspectRatio="none">
+        <path d="M0 120 Q 200 90, 400 130 T 800 110" stroke="#3D6E97" strokeWidth="2" fill="none" />
+        <path d="M0 220 Q 220 250, 420 210 T 800 240" stroke="#4C8F52" strokeWidth="2" fill="none" />
+        <path d="M0 320 Q 200 300, 400 330 T 800 310" stroke="#F26B5E" strokeWidth="2" fill="none" />
+      </svg>
+
       <div>
         <div className="hero-v2-eyebrow">Smart City Air Quality Intelligence</div>
-        <h1 className="hero-v2-title">Mission Control</h1>
-        <p className="hero-v2-tagline">AI-powered forecasting, source attribution, and intervention planning to help city officials act on air quality before it becomes a crisis.</p>
+        <h1 className="hero-v2-title">Urban Air Quality<br/>Intelligence</h1>
+        <p className="hero-v2-tagline">Forecast pollution, identify likely sources, and plan targeted interventions before air quality becomes critical.</p>
 
         <div className="hero-v2-meta-row">
           <div>
@@ -71,7 +88,9 @@ export default function CommandStrip({ result, cities, loading }) {
         </div>
       </div>
 
-      <CityIllustration />
+      <div className="hero-v2-illustration">
+        <EnvironmentIllustration />
+      </div>
     </div>
   );
 }
