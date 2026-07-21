@@ -393,3 +393,80 @@ select { background: var(--bg); border: 1px solid var(--border); border-radius: 
 
 /* Prevent horizontal overflow from any oversized decorative shape */
 body, .layout, .main { overflow-x: hidden; }
+/* ══════════════ MOTION SYSTEM TOKENS ══════════════ */
+:root {
+  --motion-fast: 180ms;
+  --motion-medium: 420ms;
+  --motion-slow: 800ms;
+  --motion-ambient: 18s;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --aqi-accent: var(--coral);
+}
+
+/* ══════════════ AQI-RESPONSIVE ACCENT ══════════════ */
+[data-aqi-category="Good"], [data-aqi-category="Satisfactory"] { --aqi-accent: #4C8F52; }
+[data-aqi-category="Moderate"] { --aqi-accent: #C97C1E; }
+[data-aqi-category="Poor"] { --aqi-accent: #E8743D; }
+[data-aqi-category="Very Poor"] { --aqi-accent: #D6493C; }
+[data-aqi-category="Severe"] { --aqi-accent: #A12842; }
+
+.hero-v2::after { transition: background var(--motion-slow) var(--ease-soft); }
+.pulse-anim circle, #sensor-pulse { transition: stroke var(--motion-medium) var(--ease-soft); }
+
+/* ══════════════ HERO PARALLAX LAYERS ══════════════ */
+.hero-illustration-wrap { position: relative; }
+.hero-layer-back, .hero-layer-mid, .hero-layer-front { transition: transform var(--motion-fast) linear; will-change: transform; }
+
+/* ══════════════ AIRFLOW PATH DRAW ══════════════ */
+@keyframes draw-path {
+  from { stroke-dashoffset: 600; }
+  to { stroke-dashoffset: 0; }
+}
+.airflow-path {
+  stroke-dasharray: 600;
+  animation: draw-path 6s var(--ease-soft) infinite alternate;
+}
+.airflow-path:nth-child(2) { animation-duration: 7.5s; animation-delay: 0.4s; }
+.airflow-path:nth-child(3) { animation-duration: 5.2s; animation-delay: 0.8s; }
+
+/* ══════════════ PIPELINE-RUN SEQUENTIAL REVEAL ══════════════ */
+@keyframes stage-enter {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.workflow-stage.sequenced {
+  opacity: 0;
+  animation: stage-enter var(--motion-medium) var(--ease-enter) forwards;
+}
+.workflow-stage.sequenced:nth-child(1) { animation-delay: 0ms; }
+.workflow-stage.sequenced:nth-child(2) { animation-delay: 120ms; }
+.workflow-stage.sequenced:nth-child(3) { animation-delay: 240ms; }
+.workflow-stage.sequenced:nth-child(4) { animation-delay: 360ms; }
+
+.workflow::before { transition: opacity var(--motion-slow) var(--ease-soft); }
+
+/* ══════════════ RUN BUTTON LOADING PULSE ══════════════ */
+@keyframes btn-pulse { 0%,100% { box-shadow: 0 8px 22px rgba(242,107,94,0.34); } 50% { box-shadow: 0 8px 30px rgba(242,107,94,0.55); } }
+.run-btn:disabled { animation: btn-pulse 1.2s ease-in-out infinite; }
+
+/* ══════════════ CARD MICRO-INTERACTIONS (interactive only) ══════════════ */
+.sidebar-link, .card:hover, select:focus, .run-btn:hover { transition: all var(--motion-fast) var(--ease-standard); }
+select:focus { outline: 2px solid var(--aqi-accent); outline-offset: 2px; }
+
+/* ══════════════ STATION-CHANGE TRANSITION ══════════════ */
+.station-detail-panel { transition: opacity var(--motion-medium) var(--ease-soft); }
+.station-detail-panel.transitioning { opacity: 0.4; }
+
+/* ══════════════ SECTION REVEAL STAGGER (background/heading/panel/items) ══════════════ */
+.reveal .page-title { transition-delay: 80ms; }
+.reveal .card, .reveal .workflow { transition-delay: 150ms; }
+.reveal .action-list li { transition-delay: 220ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .airflow-path { animation: none !important; }
+  .workflow-stage.sequenced { opacity: 1 !important; animation: none !important; transform: none !important; }
+  .run-btn:disabled { animation: none !important; }
+  .hero-layer-back, .hero-layer-mid, .hero-layer-front { transform: none !important; }
+}

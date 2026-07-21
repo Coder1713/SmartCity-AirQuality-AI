@@ -222,8 +222,8 @@ export default function App() {
               Signal to intervention in {result.pipeline_summary.total_response_time_ms}ms across 4 chained agents
             </div>
 
-            <div className="workflow">
-              <div className="workflow-stage">
+            <div className="workflow" data-aqi-category={result.forecast.category}>
+              <div className="workflow-stage sequenced">
                 <div className="stage-num">01 Forecast</div>
                 <div className="stage-title">Predicted AQI</div>
                 <div className="stage-result" style={{ color: CATEGORY_COLORS[result.forecast.category] }}>
@@ -233,7 +233,7 @@ export default function App() {
                 <div className="stage-timing">R2 {result.forecast.model_r2} · {result.step_timings[0].time_ms}ms</div>
               </div>
 
-              <div className="workflow-stage">
+              <div className="workflow-stage sequenced">
                 <div className="stage-num">02 Attribution</div>
                 <div className="stage-title">Primary Source</div>
                 <div className="stage-result" style={{ fontSize: 18 }}>{result.attribution.primary_source}</div>
@@ -241,7 +241,7 @@ export default function App() {
                 <div className="stage-timing">{result.step_timings[1].time_ms}ms</div>
               </div>
 
-              <div className="workflow-stage">
+              <div className="workflow-stage sequenced">
                 <div className="stage-num">03 Enforcement</div>
                 <div className="stage-title">Severity</div>
                 <div className="stage-result" style={{ fontSize: 18, textTransform: 'capitalize' }}>
@@ -251,7 +251,7 @@ export default function App() {
                 <div className="stage-timing">{result.step_timings[2].time_ms}ms</div>
               </div>
 
-              <div className="workflow-stage">
+              <div className="workflow-stage sequenced">
                 <div className="stage-num">04 Advisory</div>
                 <div className="stage-title">{language}, {population.replace('_', ' ')}</div>
                 <div className="stage-detail" style={{ fontSize: 13, color: 'var(--text)' }}>
