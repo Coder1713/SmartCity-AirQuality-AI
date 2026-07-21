@@ -4,9 +4,12 @@
   --sans: 'Plus Jakarta Sans', 'Inter', sans-serif;
   --mono: 'IBM Plex Mono', monospace;
 
-  --bg: #FBF8F2;
-  --bg-alt: #FFFFFF;
-  --bg-peach: #FCE9DF;
+  --bg: #FFF9F1;
+  --bg-alt: #FFF6EB;
+  --bg-peach: #FFF3E0;
+  --gold: #E8A83D;
+  --gold-dim: #C98A1E;
+  --ivory: #FBEFD9;
   --bg-green: #E4EFDE;
   --bg-blue: #E6EEF4;
   --card: #FFFFFF;
@@ -96,7 +99,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); font
   overflow: hidden;
   background: var(--bg-alt);
 }
-.hero-v2 .hero-bg-shape-1 { position: absolute; top: -80px; right: -60px; width: 380px; height: 380px; border-radius: 50%; background: radial-gradient(circle, var(--peach) 0%, transparent 70%); opacity: 0.55; z-index: 0; }
+.hero-v2 .hero-bg-shape-1 { position: absolute; top: -80px; right: -60px; width: 380px; height: 380px; border-radius: 50%; background: radial-gradient(circle, var(--gold) 0%, transparent 70%); opacity: 0.4; z-index: 0; }
 .hero-v2 .hero-bg-shape-2 { position: absolute; bottom: -100px; left: -60px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, var(--green-soft) 0%, transparent 70%); opacity: 0.7; z-index: 0; }
 .hero-v2 .hero-bg-shape-3 { position: absolute; top: 20%; right: 10%; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, var(--bg-blue) 0%, transparent 70%); opacity: 0.6; z-index: 0; }
 .hero-v2 > * { position: relative; z-index: 1; }
@@ -284,7 +287,7 @@ select { background: var(--bg); border: 1px solid var(--border); border-radius: 
 /* Hero extra layers (airflow + particulate dots + top-right circle) */
 .hero-bg-airflow { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.14; }
 .hero-bg-dots { position: absolute; right: 8%; bottom: 10%; width: 140px; height: 100px; z-index: 0; pointer-events: none; opacity: 0.16;
-  background-image: radial-gradient(circle, var(--coral-dim) 1.5px, transparent 1.5px);
+  background-image: radial-gradient(circle, var(--gold-dim) 1.5px, transparent 1.5px);
   background-size: 14px 14px;
 }
 .hero-v2::after {
@@ -296,7 +299,7 @@ select { background: var(--bg); border: 1px solid var(--border); border-radius: 
   height: 420px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--peach) 0%, transparent 65%);
-  opacity: 0.12;
+  opacity: 0.14;
   z-index: 0;
   pointer-events: none;
 }
@@ -323,9 +326,9 @@ select { background: var(--bg); border: 1px solid var(--border); border-radius: 
   top: -10px; left: -60px; right: -60px; bottom: -10px;
   background:
     radial-gradient(circle at 15% 30%, var(--bg-peach), transparent 45%),
-    radial-gradient(circle 2px at 20% 60%, var(--coral-dim) 40%, transparent 41%),
-    radial-gradient(circle 2px at 32% 45%, var(--coral-dim) 40%, transparent 41%),
-    radial-gradient(circle 2px at 26% 75%, var(--coral-dim) 40%, transparent 41%);
+    radial-gradient(circle 2px at 20% 60%, var(--gold-dim) 40%, transparent 41%),
+  radial-gradient(circle 2px at 32% 45%, var(--gold-dim) 40%, transparent 41%),
+  radial-gradient(circle 2px at 26% 75%, var(--gold-dim) 40%, transparent 41%);
   opacity: 0.5;
 }
 
@@ -342,9 +345,9 @@ select { background: var(--bg); border: 1px solid var(--border); border-radius: 
   top: -20px; left: -50px; right: -50px; bottom: -20px;
   background:
     radial-gradient(ellipse at 90% 10%, var(--bg-peach), transparent 55%),
-    radial-gradient(circle 2px at 60% 20%, var(--coral) 40%, transparent 41%),
-    radial-gradient(circle 2px at 68% 35%, var(--coral) 40%, transparent 41%),
-    radial-gradient(circle 2px at 75% 15%, var(--coral) 40%, transparent 41%);
+    radial-gradient(circle 2px at 60% 20%, var(--gold) 40%, transparent 41%),
+  radial-gradient(circle 2px at 68% 35%, var(--gold) 40%, transparent 41%),
+  radial-gradient(circle 2px at 75% 15%, var(--gold) 40%, transparent 41%);
   opacity: 0.4;
 }
 

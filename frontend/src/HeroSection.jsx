@@ -91,7 +91,7 @@ export default function CommandStrip({ result, cities, loading }) {
       <svg className="hero-bg-airflow" viewBox="0 0 800 400" preserveAspectRatio="none">
         <path className="airflow-path" d="M0 120 Q 200 90, 400 130 T 800 110" stroke="#3D6E97" strokeWidth="2" fill="none" />
         <path className="airflow-path" d="M0 220 Q 220 250, 420 210 T 800 240" stroke="#4C8F52" strokeWidth="2" fill="none" />
-        <path className="airflow-path" d="M0 320 Q 200 300, 400 330 T 800 310" stroke="#F26B5E" strokeWidth="2" fill="none" />
+        <path className="airflow-path" d="M0 320 Q 200 300, 400 330 T 800 310" stroke="#E8A83D" strokeWidth="2" fill="none" />
       </svg>
 
       <div>
