@@ -282,3 +282,100 @@ button:disabled { opacity: 0.6; cursor: not-allowed; animation: btn-pulse 1.2s e
   .workflow { grid-template-columns: 1fr; }
   .split-row-map { grid-template-columns: 1fr; }
 }
+/* ══════════════ CURSOR-REACTIVE AMBIENT GLOW ══════════════ */
+.main {
+  position: relative;
+}
+.cursor-glow {
+  position: fixed;
+  top: 0; left: 0;
+  width: 380px; height: 380px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(232,201,61,0.10) 0%, rgba(79,174,107,0.05) 45%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+  will-change: transform;
+}
+.cursor-glow.active { opacity: 1; }
+
+@media (max-width: 768px) {
+  .cursor-glow { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow { display: none; }
+}
+
+/* ══════════════ CARD MICRO-INTERACTION ══════════════ */
+.card, .kpi-tile, .workflow-stage, .explain-panel, .sim-controls, .station-detail-panel {
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--motion-fast) var(--ease-standard),
+              box-shadow var(--motion-fast) var(--ease-standard),
+              border-color var(--motion-fast) var(--ease-standard);
+}
+.card::after, .kpi-tile::after, .workflow-stage::after {
+  content: "";
+  position: absolute;
+  top: var(--mx, 50%);
+  left: var(--my, 50%);
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(232,201,61,0.08), transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-fast) ease;
+  z-index: 0;
+}
+.card:hover::after, .kpi-tile:hover::after, .workflow-stage:hover::after { opacity: 1; }
+.card:hover, .kpi-tile:hover, .workflow-stage:hover {
+  transform: translateY(-2px);
+  border-color: #2e4536;
+}
+.card > *, .kpi-tile > *, .workflow-stage > * { position: relative; z-index: 1; }
+
+@media (max-width: 768px) {
+  .card::after, .kpi-tile::after, .workflow-stage::after { display: none; }
+}
+
+/* ══════════════ SUBTLE BACKGROUND RESPONSE ══════════════ */
+.hero-sky-glow {
+  transform: translate(var(--glow-x, 0px), var(--glow-y, 0px));
+  transition: transform 0.6s ease-out;
+}
+.airflow-path {
+  transform: translate(var(--flow-x, 0px), var(--flow-y, 0px));
+  transition: transform 0.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-sky-glow, .airflow-path { transform: none !important; transition: none !important; }
+}
+
+/* ══════════════ HOVER / FOCUS POLISH ══════════════ */
+.sidebar-link, select, .run-btn, button.primary {
+  transition: all var(--motion-fast) var(--ease-standard);
+}
+select:focus, .run-btn:focus-visible, button.primary:focus-visible {
+  outline: 2px solid var(--aqi-accent);
+  outline-offset: 2px;
+}
+
+/* ══════════════ ONE-TIME CHART / BAR REVEAL ══════════════ */
+.recharts-line-curve {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: chart-draw 1.4s var(--ease-soft) forwards;
+}
+@keyframes chart-draw { to { stroke-dashoffset: 0; } }
+
+.contribution-fill {
+  animation: grow-width 0.8s var(--ease-soft) forwards;
+}
+@keyframes grow-width { from { width: 0 !important; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .recharts-line-curve { animation: none !important; stroke-dashoffset: 0 !important; }
+  .contribution-fill { animation: none !important; }
+}

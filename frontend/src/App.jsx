@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import RevealOnScroll from './RevealOnScroll';
 import ExplainableAI from './ExplainableAI';
 import AIInterventionSimulator from './AIInterventionSimulator';
@@ -36,6 +36,53 @@ const SECTIONS = [
 ];
 
 export default function App() {
+  const glowRef = useRef(null);
+  const mainRef = useRef(null);
+
+  useEffect(() => {
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isDesktop = window.innerWidth >= 768;
+    if (prefersReduced || !isDesktop) return;
+
+    let raf = null;
+    let targetX = 0, targetY = 0, curX = 0, curY = 0;
+    let ticking = false;
+
+    const handleMove = (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+      if (!ticking) { ticking = true; raf = requestAnimationFrame(tick); }
+
+      const card = e.target.closest('.card, .kpi-tile, .workflow-stage');
+      if (card) {
+        const rect = card.getBoundingClientRect();
+        card.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+        card.style.setProperty('--my', `${e.clientY - rect.top}px`);
+      }
+    };
+
+    const tick = () => {
+      curX += (targetX - curX) * 0.15;
+      curY += (targetY - curY) * 0.15;
+      if (glowRef.current) {
+        glowRef.current.style.transform = `translate(${curX}px, ${curY}px) translate(-50%, -50%)`;
+        glowRef.current.classList.add('active');
+      }
+      const dx = (curX - window.innerWidth / 2) / window.innerWidth;
+      const dy = (curY - window.innerHeight / 2) / window.innerHeight;
+      document.documentElement.style.setProperty('--glow-x', `${dx * 8}px`);
+      document.documentElement.style.setProperty('--glow-y', `${dy * 8}px`);
+      document.documentElement.style.setProperty('--flow-x', `${dx * 4}px`);
+      document.documentElement.style.setProperty('--flow-y', `${dy * 4}px`);
+      ticking = false;
+    };
+
+    window.addEventListener('mousemove', handleMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
   const [selectedStation, setSelectedStation] = useState('DL001');
   const [language, setLanguage] = useState('english');
   const [population, setPopulation] = useState('general');
@@ -134,7 +181,8 @@ export default function App() {
         ))}
       </div>
 
-      <div className="main">
+      <div className="main" ref={mainRef}>
+        <div className="cursor-glow" ref={glowRef}></div>
         <div id="overview">
           <CommandStrip result={result} cities={cities} loading={loading} onRunPipeline={runPipeline} />
         </div>
