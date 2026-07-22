@@ -1,5 +1,6 @@
 # SmartCity AQI Intelligence Platform
-Decision Support Platform for AQI Forecasting, Source Attribution, and Municipal Response Planning
+Decision Support Platform for AQI Forecasting, Source Attribution, and Municipal Response Planning.
+Full-stack AI-powered decision support system built with React, FastAPI, and Machine Learning for proactive urban air quality management.
 
 ---
 ## Contents
